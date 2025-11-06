@@ -1,0 +1,339 @@
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fmt" uri="jakarta.tags.fmt" %>
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${product.productName} - SmartShop</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+        }
+        
+        .navbar-custom {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .product-detail-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 2rem;
+        }
+        
+        .product-image-large {
+            width: 100%;
+            max-height: 500px;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+        
+        .product-price-large {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #dc3545;
+        }
+        
+        .product-old-price-large {
+            font-size: 1.5rem;
+            text-decoration: line-through;
+            color: #999;
+        }
+        
+        .product-info-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-custom navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="${pageContext.request.contextPath}/shop">
+                <i class="bi bi-shop"></i> SmartShop
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="${pageContext.request.contextPath}/shop">
+                            <i class="bi bi-house"></i> Trang chủ
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="${pageContext.request.contextPath}/shop">
+                            <i class="bi bi-grid"></i> Cửa hàng
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="${pageContext.request.contextPath}/cart">
+                            <i class="bi bi-cart"></i> Giỏ hàng
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="${pageContext.request.contextPath}/wishlist">
+                            <i class="bi bi-heart"></i> Yêu thích
+                        </a>
+                    </li>
+                    <c:choose>
+                        <c:when test="${not empty sessionScope.currentUser}">
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                                    <i class="bi bi-person-circle"></i> ${sessionScope.currentUser.fullName}
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li>
+                                        <a class="dropdown-item" href="${pageContext.request.contextPath}/customer/dashboard">
+                                            <i class="bi bi-speedometer2"></i> Trang cá nhân
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" href="${pageContext.request.contextPath}/customer/profile">
+                                            <i class="bi bi-person"></i> Thông tin cá nhân
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item" href="${pageContext.request.contextPath}/logout">
+                                            <i class="bi bi-box-arrow-right"></i> Đăng xuất
+                                        </a>
+                                    </li>
+                                </ul>
+                            </li>
+                        </c:when>
+                        <c:otherwise>
+                            <li class="nav-item">
+                                <a class="nav-link" href="${pageContext.request.contextPath}/login">
+                                    <i class="bi bi-box-arrow-in-right"></i> Đăng nhập
+                                </a>
+                            </li>
+                        </c:otherwise>
+                    </c:choose>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container my-5">
+        <c:if test="${not empty errorMessage}">
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <i class="bi bi-exclamation-triangle"></i> ${errorMessage}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        </c:if>
+        
+        <c:if test="${not empty product}">
+            <div class="product-detail-card">
+                <div class="row">
+                    <!-- Product Image -->
+                    <div class="col-md-6">
+                        <c:choose>
+                            <c:when test="${not empty product.imageUrl}">
+                                <img src="${product.imageUrl}" class="product-image-large" alt="${product.productName}">
+                            </c:when>
+                            <c:otherwise>
+                                <div class="product-image-large d-flex align-items-center justify-content-center bg-light" 
+                                     style="height: 500px;">
+                                    <i class="bi bi-image" style="font-size: 5rem; color: #ccc;"></i>
+                                </div>
+                            </c:otherwise>
+                        </c:choose>
+                        <c:if test="${product.special}">
+                            <span class="badge bg-warning text-dark mt-3">
+                                <i class="bi bi-star-fill"></i> Sản phẩm đặc biệt
+                            </span>
+                        </c:if>
+                    </div>
+                    
+                    <!-- Product Info -->
+                    <div class="col-md-6">
+                        <h1 class="mb-3">${product.productName}</h1>
+                        
+                        <div class="mb-3">
+                            <span class="badge bg-info">${product.categoryName != null ? product.categoryName : 'Chưa phân loại'}</span>
+                            <c:if test="${product.stockStatus == 'InStock' && product.stock > 0}">
+                                <span class="badge bg-success">Còn hàng</span>
+                            </c:if>
+                            <c:if test="${product.stockStatus == 'OutOfStock' || product.stock <= 0}">
+                                <span class="badge bg-danger">Hết hàng</span>
+                            </c:if>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <span class="product-price-large">
+                                <fmt:formatNumber value="${product.price}" type="currency" 
+                                    currencyCode="VND" currencySymbol="₫" groupingUsed="true"/>
+                            </span>
+                        </div>
+                        
+                        <div class="product-info-card mb-4">
+                            <h5><i class="bi bi-info-circle"></i> Thông tin sản phẩm</h5>
+                            <hr>
+                            <p><strong>Mã sản phẩm:</strong> #${product.productID}</p>
+                            <c:if test="${product.stock > 0}">
+                                <p><strong>Số lượng còn:</strong> ${product.stock} sản phẩm</p>
+                            </c:if>
+                            <c:if test="${not empty product.size}">
+                                <p><strong>Kích thước:</strong> ${product.size}</p>
+                            </c:if>
+                            <c:if test="${not empty product.color}">
+                                <p><strong>Màu sắc:</strong> ${product.color}</p>
+                            </c:if>
+                            <c:if test="${not empty product.slug}">
+                                <p><strong>Slug:</strong> /${product.slug}</p>
+                            </c:if>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <c:if test="${product.stockStatus == 'InStock' && product.stock > 0}">
+                                <button class="btn btn-primary btn-lg" onclick="addToCart(${product.productID})">
+                                    <i class="bi bi-cart-plus"></i> Thêm vào giỏ hàng
+                                </button>
+                            </c:if>
+                            <button class="btn btn-outline-danger" onclick="toggleWishlist(${product.productID})" id="wishlistBtn">
+                                <i class="bi bi-heart" id="wishlistIcon"></i> 
+                                <span id="wishlistText">Thêm vào yêu thích</span>
+                            </button>
+                        </div>
+                        <c:if test="${product.stockStatus == 'OutOfStock' || product.stock <= 0}">
+                            <div class="alert alert-warning">
+                                <i class="bi bi-exclamation-triangle"></i> Sản phẩm này hiện không còn hàng
+                            </div>
+                        </c:if>
+                    </div>
+                </div>
+                
+                <!-- Product Description -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="product-info-card">
+                            <h5><i class="bi bi-file-text"></i> Mô tả sản phẩm</h5>
+                            <hr>
+                            <div class="product-description">
+                                <c:choose>
+                                    <c:when test="${not empty product.description}">
+                                        ${product.description}
+                                    </c:when>
+                                    <c:otherwise>
+                                        <p class="text-muted">Chưa có mô tả cho sản phẩm này.</p>
+                                    </c:otherwise>
+                                </c:choose>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Back to Shop -->
+            <div class="text-center mt-4">
+                <a href="${pageContext.request.contextPath}/shop" class="btn btn-outline-primary">
+                    <i class="bi bi-arrow-left"></i> Quay lại cửa hàng
+                </a>
+            </div>
+        </c:if>
+        
+        <c:if test="${empty product}">
+            <div class="text-center py-5">
+                <i class="bi bi-exclamation-triangle" style="font-size: 4rem; color: #ffc107;"></i>
+                <p class="mt-3">Không tìm thấy sản phẩm</p>
+                <a href="${pageContext.request.contextPath}/shop" class="btn btn-primary">
+                    <i class="bi bi-arrow-left"></i> Về trang chủ
+                </a>
+            </div>
+        </c:if>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white text-center py-4 mt-5">
+        <div class="container">
+            <p class="mb-0">&copy; 2024 SmartShop. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Check if product is in wishlist on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            checkWishlistStatus(${product.productID});
+        });
+        
+        function addToCart(productID) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '${pageContext.request.contextPath}/cart';
+            
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = 'add';
+            form.appendChild(actionInput);
+            
+            const productIDInput = document.createElement('input');
+            productIDInput.type = 'hidden';
+            productIDInput.name = 'productID';
+            productIDInput.value = productID;
+            form.appendChild(productIDInput);
+            
+            const redirectInput = document.createElement('input');
+            redirectInput.type = 'hidden';
+            redirectInput.name = 'redirect';
+            redirectInput.value = '${pageContext.request.contextPath}/product/detail?id=' + productID;
+            form.appendChild(redirectInput);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+        
+        function toggleWishlist(productID) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '${pageContext.request.contextPath}/wishlist';
+            
+            // Check current status (simplified - in real app, use AJAX)
+            const icon = document.getElementById('wishlistIcon');
+            const isActive = icon.classList.contains('bi-heart-fill');
+            
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = isActive ? 'remove' : 'add';
+            form.appendChild(actionInput);
+            
+            const productIDInput = document.createElement('input');
+            productIDInput.type = 'hidden';
+            productIDInput.name = 'productID';
+            productIDInput.value = productID;
+            form.appendChild(productIDInput);
+            
+            const redirectInput = document.createElement('input');
+            redirectInput.type = 'hidden';
+            redirectInput.name = 'redirect';
+            redirectInput.value = '${pageContext.request.contextPath}/product/detail?id=' + productID;
+            form.appendChild(redirectInput);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+        
+        function checkWishlistStatus(productID) {
+            // This would ideally be an AJAX call to check status
+            // For now, we'll just show the button in default state
+        }
+    </script>
+</body>
+</html>
+

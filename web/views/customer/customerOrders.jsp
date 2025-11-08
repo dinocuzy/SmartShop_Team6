@@ -41,55 +41,13 @@
     </style>
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-custom navbar-dark">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="${pageContext.request.contextPath}/customer/dashboard">
-                <i class="bi bi-shop"></i> SmartShop
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="${pageContext.request.contextPath}/customer/dashboard">
-                            <i class="bi bi-house"></i> Trang chủ
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="${pageContext.request.contextPath}/customer/orders">
-                            <i class="bi bi-cart-check"></i> Đơn hàng của tôi
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="${pageContext.request.contextPath}/cart">
-                            <i class="bi bi-cart"></i> Giỏ hàng
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="${pageContext.request.contextPath}/customer/profile">
-                            <i class="bi bi-person"></i> Thông tin cá nhân
-                        </a>
-                    </li>
-                </ul>
-                <ul class="navbar-nav">
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-person-circle"></i> ${currentUser.fullName}
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="${pageContext.request.contextPath}/customer/profile">
-                                <i class="bi bi-person"></i> Thông tin cá nhân</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item text-danger" href="${pageContext.request.contextPath}/logout">
-                                <i class="bi bi-box-arrow-right"></i> Đăng xuất</a></li>
-                        </ul>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+    <jsp:include page="/views/common/header-customer.jsp">
+        <jsp:param name="active" value="orders" />
+    </jsp:include>
+    
+    <jsp:include page="/views/common/breadcrumb.jsp">
+        <jsp:param name="currentPage" value="Đơn hàng của tôi" />
+    </jsp:include>
     
     <!-- Main Content -->
     <div class="container py-4">

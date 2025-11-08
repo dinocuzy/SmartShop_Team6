@@ -72,6 +72,10 @@ public class UserDAO implements IUserDAO {
     
     @Override
     public User getByEmail(String email) {
+        if (email == null || email.trim().isEmpty()) {
+            return null;
+        }
+        
         String sql = "SELECT u.UserID, u.RoleID, u.Email, u.PasswordHash, u.FullName, u.Phone, " +
                      "u.IsActive, u.CreatedAt, r.RoleName FROM Users u " +
                      "LEFT JOIN Roles r ON u.RoleID = r.RoleID WHERE u.Email = ?";
@@ -79,18 +83,28 @@ public class UserDAO implements IUserDAO {
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             
-            ps.setString(1, email);
+            ps.setString(1, email.trim());
             
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     User user = mapResultSetToUser(rs);
-                    user.setRoleName(rs.getString("RoleName"));
+                    String roleName = rs.getString("RoleName");
+                    if (roleName != null) {
+                        user.setRoleName(roleName);
+                    }
                     return user;
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Error getting user by email: " + e.getMessage());
+            System.err.println("Error getting user by email from database: " + e.getMessage());
             e.printStackTrace();
+            // Không throw exception, chỉ return null để caller xử lý
+            // Caller có thể phân biệt giữa "user không tồn tại" và "lỗi database" nếu cần
+            return null;
+        } catch (Exception e) {
+            System.err.println("Unexpected error in getByEmail: " + e.getMessage());
+            e.printStackTrace();
+            return null;
         }
         return null;
     }

@@ -51,10 +51,11 @@ public class CustomerDashboardServlet extends HttpServlet {
             List<model.Order> userOrders = orderService.getOrdersByUser(currentUser.getUserID());
             
             // Đếm đơn hàng theo trạng thái của user
-            int totalOrders = orderService.countOrders(String.valueOf(currentUser.getUserID()), null, 0);
-            int pendingOrders = orderService.countOrders(String.valueOf(currentUser.getUserID()), "Pending", 0);
-            int processingOrders = orderService.countOrders(String.valueOf(currentUser.getUserID()), "Processing", 0);
-            int deliveredOrders = orderService.countOrders(String.valueOf(currentUser.getUserID()), "Delivered", 0);
+            // countOrders(searchKeyword, status, userID)
+            int totalOrders = orderService.countOrders(null, null, currentUser.getUserID());
+            int pendingOrders = orderService.countOrders(null, "Pending", currentUser.getUserID());
+            int processingOrders = orderService.countOrders(null, "Processing", currentUser.getUserID());
+            int deliveredOrders = orderService.countOrders(null, "Delivered", currentUser.getUserID());
             
             // Lấy sản phẩm mới nhất (có thể lấy 6 sản phẩm)
             // getPagedProducts(pageNumber, pageSize, sortBy, sortOrder, searchKeyword, categoryID, includeInactive)

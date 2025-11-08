@@ -14,6 +14,9 @@ import userservice.IUserService;
 import userservice.UserService;
 import addressservice.IAddressService;
 import addressservice.AddressService;
+import orderstatushistoryservice.IOrderStatusHistoryService;
+import orderstatushistoryservice.OrderStatusHistoryService;
+import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -33,13 +36,21 @@ public class OrderServlet extends HttpServlet {
     private IOrderService orderService;
     private IUserService userService;
     private IAddressService addressService;
+    private IOrderStatusHistoryService orderStatusHistoryService;
     
     @Override
     public void init() throws ServletException {
         super.init();
-        orderService = new OrderService();
-        userService = new UserService();
-        addressService = new AddressService();
+        try {
+            orderService = new OrderService();
+            userService = new UserService();
+            addressService = new AddressService();
+            orderStatusHistoryService = new OrderStatusHistoryService();
+        } catch (Exception e) {
+            System.err.println("Error initializing OrderServlet: " + e.getMessage());
+            e.printStackTrace();
+            // Không throw exception để tránh context startup failure
+        }
     }
     
     @Override
@@ -398,11 +409,57 @@ public class OrderServlet extends HttpServlet {
         
         try {
             if (order.getOrderID() > 0) {
+                // Lấy order cũ để so sánh trạng thái
+                Order oldOrder = orderService.getOrderById(order.getOrderID());
+                String oldStatus = oldOrder != null ? oldOrder.getOrderStatus() : null;
+                String newStatus = order.getOrderStatus();
+                
+                // Cập nhật order
                 orderService.updateOrder(order);
+                
+                // Ghi log lịch sử thay đổi trạng thái nếu có thay đổi
+                if (oldOrder != null && oldStatus != null && !oldStatus.equals(newStatus)) {
+                    try {
+                        HttpSession session = request.getSession();
+                        User currentUser = (User) session.getAttribute("currentUser");
+                        Integer changedBy = currentUser != null ? currentUser.getUserID() : null;
+                        
+                    orderStatusHistoryService.recordStatusChange(
+                        order.getOrderID(), 
+                        oldStatus, 
+                        newStatus, 
+                        changedBy
+                    );
+                    } catch (Exception e) {
+                        // Không throw exception để không ảnh hưởng đến việc cập nhật order
+                        System.err.println("Error recording order status history: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                }
+                
                 request.setAttribute("successMessage", "Order updated successfully");
             } else {
                 int orderID = orderService.addOrder(order);
                 order.setOrderID(orderID);
+                
+                // Ghi log lịch sử cho đơn hàng mới (trạng thái đầu tiên)
+                try {
+                    HttpSession session = request.getSession();
+                    User currentUser = (User) session.getAttribute("currentUser");
+                    Integer changedBy = currentUser != null ? currentUser.getUserID() : null;
+                    
+                    orderStatusHistoryService.recordStatusChange(
+                        orderID, 
+                        "New", 
+                        order.getOrderStatus(), 
+                        changedBy
+                    );
+                } catch (Exception e) {
+                    // Không throw exception để không ảnh hưởng đến việc tạo order
+                    System.err.println("Error recording order status history for new order: " + e.getMessage());
+                    e.printStackTrace();
+                }
+                
                 request.setAttribute("successMessage", "Order added successfully");
             }
         } catch (IllegalArgumentException e) {

@@ -25,7 +25,13 @@ public class CategoryServlet extends HttpServlet {
     @Override
     public void init() throws ServletException {
         super.init();
-        categoryService = new CategoryService();
+        try {
+            categoryService = new CategoryService();
+        } catch (Exception e) {
+            System.err.println("Error initializing CategoryServlet: " + e.getMessage());
+            e.printStackTrace();
+            // Không throw exception để tránh context startup failure
+        }
     }
     
     @Override

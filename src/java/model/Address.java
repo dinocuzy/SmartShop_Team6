@@ -142,7 +142,22 @@ public class Address {
         return isDefault;
     }
     
+    /**
+     * Getter method cho EL expression
+     * EL sẽ tìm property "isDefault" từ method này
+     */
+    public boolean getIsDefault() {
+        return isDefault;
+    }
+    
     public void setDefault(boolean isDefault) {
+        this.isDefault = isDefault;
+    }
+    
+    /**
+     * Setter method cho EL expression (nếu cần)
+     */
+    public void setIsDefault(boolean isDefault) {
         this.isDefault = isDefault;
     }
     

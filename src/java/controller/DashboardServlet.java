@@ -19,6 +19,7 @@ import promotionservice.IPromotionService;
 import promotionservice.PromotionService;
 import notificationservice.INotificationService;
 import notificationservice.NotificationService;
+import util.AuthorizationUtil;
 
 import java.io.IOException;
 
@@ -68,11 +69,38 @@ public class DashboardServlet extends HttpServlet {
             return;
         }
         
-        // Kiểm tra role (Admin)
-        String roleName = currentUser.getRoleName();
-        if (roleName == null || !roleName.equals("Admin")) {
+        // Kiểm tra role (Admin) - sử dụng AuthorizationUtil
+        boolean isAdmin = false;
+        try {
+            isAdmin = AuthorizationUtil.hasRole(currentUser, "Admin");
+        } catch (Exception e) {
+            System.err.println("Error checking role in DashboardServlet: " + e.getMessage());
+            e.printStackTrace();
+            // Fallback: kiểm tra theo roleID (Admin = 1)
+            if (currentUser != null) {
+                isAdmin = (currentUser.getRoleID() == 1);
+            }
+        }
+        
+        if (!isAdmin) {
             // Nếu không phải Admin, redirect về dashboard phù hợp
-            response.sendRedirect(request.getContextPath() + "/home");
+            try {
+                if (AuthorizationUtil.hasRole(currentUser, "Manager")) {
+                    response.sendRedirect(request.getContextPath() + "/manager/dashboard");
+                } else if (AuthorizationUtil.hasRole(currentUser, "Staff")) {
+                    response.sendRedirect(request.getContextPath() + "/staff/dashboard");
+                } else {
+                    // Customer hoặc role khác - redirect về home (Customer được phép)
+                    response.sendRedirect(request.getContextPath() + "/home");
+                }
+            } catch (Exception e) {
+                // Fallback: nếu là Customer thì về home, còn không thì về login
+                if (currentUser != null && currentUser.getRoleID() == 4) {
+                    response.sendRedirect(request.getContextPath() + "/home");
+                } else {
+                    response.sendRedirect(request.getContextPath() + "/login");
+                }
+            }
             return;
         }
         

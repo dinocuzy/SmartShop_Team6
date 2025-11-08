@@ -25,11 +25,12 @@
             left: 0;
             height: 100vh;
             width: var(--sidebar-width);
-            background: linear-gradient(180deg, #3498db 0%, #2980b9 100%);
+            background: linear-gradient(180deg, #1a1a1a 0%, #2c2c2c 100%);
             color: white;
             overflow-y: auto;
             z-index: 1000;
             box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            border-right: 3px solid #3498db;
         }
         
         .sidebar-header {
@@ -57,9 +58,9 @@
         
         .sidebar-menu .nav-link:hover,
         .sidebar-menu .nav-link.active {
-            background: rgba(255,255,255,0.1);
+            background: rgba(52, 152, 219, 0.2);
             color: white;
-            border-left-color: white;
+            border-left-color: #3498db;
         }
         
         .main-content {
@@ -130,6 +131,20 @@
             margin-bottom: 0.5rem;
             color: #3498db;
         }
+        
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px 10px 0 0 !important;
+            padding: 1rem 1.5rem;
+        }
     </style>
 </head>
 <body>
@@ -146,13 +161,16 @@
             <a href="${pageContext.request.contextPath}/admin/orders" class="nav-link">
                 <i class="bi bi-cart-check"></i> Đơn hàng
             </a>
-            <a href="${pageContext.request.contextPath}/admin/payments" class="nav-link">
+            <a href="${pageContext.request.contextPath}/admin/orders?view=payments" class="nav-link">
                 <i class="bi bi-wallet2"></i> Thanh toán
             </a>
             <a href="${pageContext.request.contextPath}/admin/notifications" class="nav-link">
                 <i class="bi bi-bell"></i> Thông báo
             </a>
             <hr class="text-white-50">
+            <a href="${pageContext.request.contextPath}/home" class="nav-link">
+                <i class="bi bi-house"></i> Về trang chủ
+            </a>
             <a href="${pageContext.request.contextPath}/logout" class="nav-link">
                 <i class="bi bi-box-arrow-right"></i> Đăng xuất
             </a>
@@ -167,6 +185,14 @@
                 <i class="bi bi-calendar"></i> <span id="currentDate"></span>
             </div>
         </div>
+        
+        <c:if test="${not empty sessionScope.blockedMessage}">
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <i class="bi bi-exclamation-triangle"></i> ${sessionScope.blockedMessage}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            <c:remove var="blockedMessage" scope="session"/>
+        </c:if>
         
         <c:if test="${not empty errorMessage}">
             <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -255,10 +281,17 @@
                     <a href="${pageContext.request.contextPath}/admin/orders?status=Pending" class="quick-action-btn">
                         <i class="bi bi-exclamation-circle"></i>
                         <div><strong>Đơn chờ xử lý</strong></div>
+                        <small class="text-muted">${pendingOrders} đơn</small>
                     </a>
-                    <a href="${pageContext.request.contextPath}/admin/payments" class="quick-action-btn">
+                    <a href="${pageContext.request.contextPath}/admin/orders?status=Processing" class="quick-action-btn">
+                        <i class="bi bi-gear"></i>
+                        <div><strong>Đơn đang xử lý</strong></div>
+                        <small class="text-muted">${processingOrders} đơn</small>
+                    </a>
+                    <a href="${pageContext.request.contextPath}/admin/orders?status=Unpaid" class="quick-action-btn">
                         <i class="bi bi-wallet2"></i>
-                        <div><strong>Quản lý thanh toán</strong></div>
+                        <div><strong>Đơn chưa thanh toán</strong></div>
+                        <small class="text-muted">${unpaidOrders} đơn</small>
                     </a>
                     <a href="${pageContext.request.contextPath}/admin/notifications" class="quick-action-btn">
                         <i class="bi bi-bell"></i>

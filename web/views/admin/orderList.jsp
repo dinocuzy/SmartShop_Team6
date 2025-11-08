@@ -190,7 +190,7 @@
                                             <td class="text-center">
                                                 <a href="${pageContext.request.contextPath}/admin/orders?action=edit&orderID=${order.orderID}" 
                                                    class="btn btn-sm btn-warning me-1"
-                                                   title="Chỉnh sửa">
+                                                        title="Chỉnh sửa">
                                                     <i class="bi bi-pencil"></i>
                                                 </a>
                                                 <a href="${pageContext.request.contextPath}/admin/orders?action=delete&orderID=${order.orderID}" 
@@ -351,7 +351,7 @@
                                             ${address.fullName != null ? address.fullName : 'Address'} - 
                                             ${address.line1 != null ? address.line1 : ''} 
                                             ${address.city != null ? ', ' += address.city : ''}
-                                            ${address['default'] ? ' (Mặc định)' : ''}
+                                            ${address.isDefault ? ' (Mặc định)' : ''}
                                         </option>
                                     </c:forEach>
                                 </select>

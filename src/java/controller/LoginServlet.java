@@ -11,6 +11,11 @@ import userservice.IUserService;
 import userservice.UserService;
 import roleservice.IRoleService;
 import roleservice.RoleService;
+import cartservice.ICartService;
+import cartservice.CartService;
+import model.Cart;
+import model.CartItem;
+import model.Product;
 
 import java.io.IOException;
 import java.security.MessageDigest;
@@ -25,6 +30,7 @@ public class LoginServlet extends HttpServlet {
     
     private IUserService userService;
     private IRoleService roleService;
+    private ICartService cartService;
     
     @Override
     public void init() throws ServletException {
@@ -32,6 +38,7 @@ public class LoginServlet extends HttpServlet {
             super.init();
             userService = new UserService();
             roleService = new RoleService();
+            cartService = new CartService();
         } catch (Exception e) {
             System.err.println("Error initializing LoginServlet: " + e.getMessage());
             e.printStackTrace();
@@ -48,8 +55,31 @@ public class LoginServlet extends HttpServlet {
         User currentUser = (User) session.getAttribute("currentUser");
         
         if (currentUser != null) {
-            // Đã đăng nhập, redirect về dashboard phù hợp
-            response.sendRedirect(request.getContextPath() + "/home");
+            // Đã đăng nhập, redirect về dashboard phù hợp theo role
+            String roleName = currentUser.getRoleName();
+            String redirectPath = request.getContextPath() + "/home"; // Default: trang chủ sản phẩm
+            
+            if (roleName != null) {
+                switch (roleName) {
+                    case "Admin":
+                        redirectPath = request.getContextPath() + "/admin/dashboard";
+                        break;
+                    case "Manager":
+                        redirectPath = request.getContextPath() + "/manager/dashboard";
+                        break;
+                    case "Staff":
+                        redirectPath = request.getContextPath() + "/staff/dashboard";
+                        break;
+                    case "Customer":
+                        redirectPath = request.getContextPath() + "/home";
+                        break;
+                    default:
+                        redirectPath = request.getContextPath() + "/home";
+                        break;
+                }
+            }
+            
+            response.sendRedirect(redirectPath);
             return;
         }
         
@@ -161,6 +191,68 @@ public class LoginServlet extends HttpServlet {
             HttpSession session = request.getSession();
             session.setAttribute("currentUser", user);
             
+            // [ĐỒNG BỘ CART] Đồng bộ giỏ hàng từ session vào DB
+            Cart sessionCart = (Cart) session.getAttribute("cart");
+            if (sessionCart != null && !sessionCart.isEmpty() && cartService != null) {
+                try {
+                    // Đồng bộ cart từ session vào DB (gộp số lượng nếu trùng)
+                    java.util.List<CartItem> sessionCartItems = sessionCart.getItems();
+                    cartService.syncCartFromSession(user.getUserID(), sessionCartItems);
+                    
+                    // Load cart từ DB và cập nhật lại session cart
+                    java.util.List<model.CartItemDB> dbCartItems = cartService.getCartItemsByUser(user.getUserID());
+                    Cart mergedCart = new Cart();
+                    
+                    for (model.CartItemDB dbItem : dbCartItems) {
+                        Product product = dbItem.getProduct();
+                        if (product != null) {
+                            CartItem cartItem = new CartItem();
+                            cartItem.setProductID(product.getProductID());
+                            cartItem.setProductName(product.getProductName());
+                            cartItem.setImageUrl(product.getImageUrl());
+                            cartItem.setPrice(product.getPrice());
+                            cartItem.setQuantity(dbItem.getQuantity());
+                            cartItem.setStock(product.getStock());
+                            cartItem.setStockStatus(product.getStockStatus());
+                            mergedCart.addItem(cartItem);
+                        }
+                    }
+                    
+                    // Cập nhật session cart với cart đã merge
+                    session.setAttribute("cart", mergedCart);
+                } catch (Exception e) {
+                    System.err.println("Error syncing cart on login: " + e.getMessage());
+                    e.printStackTrace();
+                    // Không throw, tiếp tục login
+                }
+            } else if (cartService != null) {
+                // Nếu session cart rỗng, load từ DB
+                try {
+                    java.util.List<model.CartItemDB> dbCartItems = cartService.getCartItemsByUser(user.getUserID());
+                    Cart dbCart = new Cart();
+                    
+                    for (model.CartItemDB dbItem : dbCartItems) {
+                        Product product = dbItem.getProduct();
+                        if (product != null) {
+                            CartItem cartItem = new CartItem();
+                            cartItem.setProductID(product.getProductID());
+                            cartItem.setProductName(product.getProductName());
+                            cartItem.setImageUrl(product.getImageUrl());
+                            cartItem.setPrice(product.getPrice());
+                            cartItem.setQuantity(dbItem.getQuantity());
+                            cartItem.setStock(product.getStock());
+                            cartItem.setStockStatus(product.getStockStatus());
+                            dbCart.addItem(cartItem);
+                        }
+                    }
+                    
+                    session.setAttribute("cart", dbCart);
+                } catch (Exception e) {
+                    System.err.println("Error loading cart from DB on login: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+            
             // Kiểm tra "Remember Me"
             String rememberMe = request.getParameter("rememberMe");
             if (rememberMe != null && rememberMe.equals("on")) {
@@ -171,8 +263,32 @@ public class LoginServlet extends HttpServlet {
                 session.setMaxInactiveInterval(30 * 60); // 30 phút
             }
             
-            // Redirect về dashboard phù hợp
-            response.sendRedirect(request.getContextPath() + "/home");
+            // Redirect về dashboard phù hợp theo role
+            String roleName = user.getRoleName();
+            String redirectPath = request.getContextPath() + "/home"; // Default: trang chủ sản phẩm
+            
+            if (roleName != null) {
+                switch (roleName) {
+                    case "Admin":
+                        redirectPath = request.getContextPath() + "/admin/dashboard";
+                        break;
+                    case "Manager":
+                        redirectPath = request.getContextPath() + "/manager/dashboard";
+                        break;
+                    case "Staff":
+                        redirectPath = request.getContextPath() + "/staff/dashboard";
+                        break;
+                    case "Customer":
+                        // Customer đăng nhập vào trang chủ sản phẩm
+                        redirectPath = request.getContextPath() + "/home";
+                        break;
+                    default:
+                        redirectPath = request.getContextPath() + "/home";
+                        break;
+                }
+            }
+            
+            response.sendRedirect(redirectPath);
             
         } catch (Exception e) {
             e.printStackTrace();

@@ -37,9 +37,15 @@ public class UserServlet extends HttpServlet {
     @Override
     public void init() throws ServletException {
         super.init();
-        userService = new UserService();
-        roleService = new RoleService();
-        addressService = new AddressService();
+        try {
+            userService = new UserService();
+            roleService = new RoleService();
+            addressService = new AddressService();
+        } catch (Exception e) {
+            System.err.println("Error initializing UserServlet: " + e.getMessage());
+            e.printStackTrace();
+            // Không throw exception để tránh context startup failure
+        }
     }
     
     @Override
@@ -297,6 +303,7 @@ public class UserServlet extends HttpServlet {
                 return;
             }
             
+            // Load roles
             List<Role> roles;
             try {
                 roles = roleService.getAllRoles();
@@ -308,6 +315,7 @@ public class UserServlet extends HttpServlet {
                 e.printStackTrace();
                 roles = new java.util.ArrayList<>();
             }
+            
             // Load addresses của user
             List<Address> addresses = new java.util.ArrayList<>();
             try {
@@ -321,10 +329,94 @@ public class UserServlet extends HttpServlet {
                 addresses = new java.util.ArrayList<>();
             }
             
+            // Load users list để hiển thị trong bảng (giữ lại các filter/pagination hiện tại)
+            String pageParam = request.getParameter("page");
+            String searchKeyword = request.getParameter("search");
+            String roleParam = request.getParameter("roleID");
+            String sortBy = request.getParameter("sortBy");
+            String sortOrder = request.getParameter("sortOrder");
+            String showAllParam = request.getParameter("showAll");
+            
+            int pageNumber = 1;
+            int pageSize = 10;
+            int roleID = 0;
+            boolean includeInactive = "true".equalsIgnoreCase(showAllParam);
+            
+            if (pageParam != null && !pageParam.trim().isEmpty()) {
+                try {
+                    pageNumber = Integer.parseInt(pageParam.trim());
+                    if (pageNumber < 1) pageNumber = 1;
+                } catch (NumberFormatException e) {
+                    pageNumber = 1;
+                }
+            }
+            
+            if (roleParam != null && !roleParam.trim().isEmpty()) {
+                try {
+                    roleID = Integer.parseInt(roleParam.trim());
+                    if (roleID < 0) roleID = 0;
+                } catch (NumberFormatException e) {
+                    roleID = 0;
+                }
+            }
+            
+            if (sortBy == null || sortBy.trim().isEmpty()) {
+                sortBy = "UserID";
+            }
+            if (sortOrder == null || sortOrder.trim().isEmpty()) {
+                sortOrder = "ASC";
+            }
+            
+            if (searchKeyword != null) {
+                searchKeyword = searchKeyword.trim();
+                if (searchKeyword.isEmpty()) {
+                    searchKeyword = null;
+                }
+            }
+            
+            // Load users list với pagination
+            Map<User, Address> userAddressMap = new HashMap<>();
+            List<User> users = new java.util.ArrayList<>();
+            
+            try {
+                userAddressMap = userService.getPagedUsersWithDefaultAddress(
+                    pageNumber, pageSize, sortBy, sortOrder, searchKeyword, roleID, includeInactive
+                );
+                if (userAddressMap != null) {
+                    users = new java.util.ArrayList<>(userAddressMap.keySet());
+                }
+            } catch (Exception e) {
+                System.err.println("Error loading users in showEditForm: " + e.getMessage());
+                e.printStackTrace();
+            }
+            
+            // Count total users
+            int totalUsers = 0;
+            try {
+                totalUsers = userService.countUsers(searchKeyword, roleID, includeInactive);
+            } catch (Exception e) {
+                System.err.println("Error counting users in showEditForm: " + e.getMessage());
+                e.printStackTrace();
+            }
+            
+            int totalPages = (int) Math.ceil((double) totalUsers / pageSize);
+            
+            // Set all attributes
+            request.setAttribute("users", users);
+            request.setAttribute("userAddressesMap", userAddressMap);
             request.setAttribute("roles", roles);
             request.setAttribute("user", user);
             request.setAttribute("addresses", addresses);
             request.setAttribute("action", "edit");
+            request.setAttribute("currentPage", pageNumber);
+            request.setAttribute("totalPages", totalPages);
+            request.setAttribute("totalUsers", totalUsers);
+            request.setAttribute("pageSize", pageSize);
+            request.setAttribute("searchKeyword", searchKeyword);
+            request.setAttribute("roleID", roleID);
+            request.setAttribute("sortBy", sortBy);
+            request.setAttribute("sortOrder", sortOrder);
+            request.setAttribute("showAll", includeInactive);
             
             request.getRequestDispatcher("/views/admin/userList.jsp").forward(request, response);
         } catch (NumberFormatException e) {

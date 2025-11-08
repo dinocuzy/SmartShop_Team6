@@ -57,6 +57,9 @@ public class WishlistServlet extends HttpServlet {
             case "remove":
                 removeFromWishlist(request, response);
                 break;
+            case "toggle":
+                toggleWishlist(request, response);
+                break;
             default:
                 response.sendRedirect(request.getContextPath() + "/wishlist");
                 break;
@@ -102,7 +105,7 @@ public class WishlistServlet extends HttpServlet {
             String productIDParam = request.getParameter("productID");
             
             if (productIDParam == null || productIDParam.trim().isEmpty()) {
-                response.sendRedirect(request.getContextPath() + "/shop");
+                response.sendRedirect(request.getContextPath() + "/home");
                 return;
             }
             
@@ -113,7 +116,7 @@ public class WishlistServlet extends HttpServlet {
             
             if (product == null) {
                 request.setAttribute("errorMessage", "Sản phẩm không tồn tại");
-                response.sendRedirect(request.getContextPath() + "/shop");
+                response.sendRedirect(request.getContextPath() + "/home");
                 return;
             }
             
@@ -132,7 +135,7 @@ public class WishlistServlet extends HttpServlet {
             
         } catch (Exception e) {
             e.printStackTrace();
-            response.sendRedirect(request.getContextPath() + "/shop");
+            response.sendRedirect(request.getContextPath() + "/home");
         }
     }
     
@@ -168,6 +171,55 @@ public class WishlistServlet extends HttpServlet {
         } catch (Exception e) {
             e.printStackTrace();
             response.sendRedirect(request.getContextPath() + "/wishlist");
+        }
+    }
+    
+    /**
+     * Toggle sản phẩm trong danh sách yêu thích (thêm nếu chưa có, xóa nếu đã có)
+     */
+    private void toggleWishlist(HttpServletRequest request, HttpServletResponse response) 
+            throws ServletException, IOException {
+        
+        try {
+            String productIDParam = request.getParameter("productID");
+            
+            if (productIDParam == null || productIDParam.trim().isEmpty()) {
+                response.sendRedirect(request.getContextPath() + "/home");
+                return;
+            }
+            
+            int productID = Integer.parseInt(productIDParam.trim());
+            
+            // Kiểm tra sản phẩm có tồn tại không
+            Product product = productService.getProductById(productID);
+            
+            if (product == null) {
+                request.setAttribute("errorMessage", "Sản phẩm không tồn tại");
+                response.sendRedirect(request.getContextPath() + "/home");
+                return;
+            }
+            
+            HttpSession session = request.getSession();
+            Set<Integer> wishlist = getWishlist(session);
+            
+            // Toggle: nếu đã có thì xóa, chưa có thì thêm
+            if (wishlist.contains(productID)) {
+                wishlist.remove(productID);
+            } else {
+                wishlist.add(productID);
+            }
+            
+            // Redirect về trang trước
+            String redirectUrl = request.getParameter("redirect");
+            if (redirectUrl != null && !redirectUrl.trim().isEmpty()) {
+                response.sendRedirect(redirectUrl);
+            } else {
+                response.sendRedirect(request.getContextPath() + "/home");
+            }
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.sendRedirect(request.getContextPath() + "/home");
         }
     }
     

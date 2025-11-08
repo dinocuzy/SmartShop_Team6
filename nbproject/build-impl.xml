@@ -329,6 +329,11 @@ or ant -Dj2ee.platform.classpath=&lt;server_classpath&gt; (where no properties f
                     </classpath>
                     <compilerarg line="${endorsed.classpath.cmd.line.arg}"/>
                     <compilerarg line="${javac.compilerargs}"/>
+                    <compilerarg value="-processorpath"/>
+                    <compilerarg path="@{processorpath}:${empty.dir}"/>
+                    <compilerarg line="${ap.processors.internal}"/>
+                    <compilerarg value="-s"/>
+                    <compilerarg path="@{apgeneratedsrcdir}"/>
                     <compilerarg line="${ap.proc.none.internal}"/>
                     <customize/>
                 </javac>
@@ -799,11 +804,19 @@ or ant -Dj2ee.platform.classpath=&lt;server_classpath&gt; (where no properties f
         </macrodef>
     </target>
     <target name="-init-taskdefs">
-        <!-- CopyLibs task is optional - we use standard Ant copy instead -->
-        <!-- Taskdef removed to avoid dependency on CopyLibs JAR -->
+        <fail unless="libs.CopyLibs.classpath">
+The libs.CopyLibs.classpath property is not set up.
+This property must point to 
+org-netbeans-modules-java-j2seproject-copylibstask.jar file which is part
+of NetBeans IDE installation and is usually located at 
+&lt;netbeans_installation&gt;/java&lt;version&gt;/ant/extra folder.
+Either open the project in the IDE and make sure CopyLibs library
+exists or setup the property manually. For example like this:
+ ant -Dlibs.CopyLibs.classpath=a/path/to/org-netbeans-modules-java-j2seproject-copylibstask.jar
+                </fail>
+        <taskdef classpath="${libs.CopyLibs.classpath}" resource="org/netbeans/modules/java/j2seproject/copylibstask/antlib.xml"/>
     </target>
     <target name="-init-ap-cmdline-properties">
-        <!-- Use project.properties values if set, otherwise defaults -->
         <property name="annotation.processing.enabled" value="true"/>
         <property name="annotation.processing.processors.list" value=""/>
         <property name="annotation.processing.run.all.processors" value="true"/>
@@ -820,12 +833,7 @@ or ant -Dj2ee.platform.classpath=&lt;server_classpath&gt; (where no properties f
             <isfalse value="${annotation.processing.run.all.processors}"/>
         </condition>
         <condition else="" property="ap.proc.none.internal" value="-proc:none">
-            <or>
             <isfalse value="${annotation.processing.enabled}"/>
-                <not>
-                    <isset property="annotation.processing.enabled"/>
-                </not>
-            </or>
         </condition>
     </target>
     <target depends="-init-ap-cmdline-properties,-init-ap-cmdline-supported" name="-init-ap-cmdline">
@@ -999,22 +1007,22 @@ or ant -Dj2ee.platform.classpath=&lt;server_classpath&gt; (where no properties f
     </target>
     <target depends="init,compile,compile-jsps,-pre-dist,-do-dist-with-manifest,-do-dist-without-manifest" name="do-dist"/>
     <target depends="init" if="dist.ear.dir" name="library-inclusion-in-manifest">
-        <mkdir dir="${dist.ear.dir}/lib"/>
-        <copy file="${file.reference.gson-2.10.1.jar}" tofile="${dist.ear.dir}/lib/gson-2.10.1.jar" failonerror="false"/>
-        <copy file="${file.reference.jakarta.mail-2.0.1.jar}" tofile="${dist.ear.dir}/lib/jakarta.mail-2.0.1.jar" failonerror="false"/>
-        <copy file="${file.reference.jakarta.servlet.jsp.jstl-3.0.1.jar}" tofile="${dist.ear.dir}/lib/jakarta.servlet.jsp.jstl-3.0.1.jar" failonerror="false"/>
-        <copy file="${file.reference.jakarta.servlet.jsp.jstl-api-3.0.1.jar}" tofile="${dist.ear.dir}/lib/jakarta.servlet.jsp.jstl-api-3.0.1.jar" failonerror="false"/>
-        <copy file="${file.reference.mssql-jdbc-12.10.0.jre11.jar}" tofile="${dist.ear.dir}/lib/mssql-jdbc-12.10.0.jre11.jar" failonerror="false"/>
+        <copyfiles files="${file.reference.gson-2.10.1.jar}" iftldtodir="${build.web.dir}/WEB-INF" todir="${dist.ear.dir}/lib"/>
+        <copyfiles files="${file.reference.jakarta.mail-2.0.1.jar}" iftldtodir="${build.web.dir}/WEB-INF" todir="${dist.ear.dir}/lib"/>
+        <copyfiles files="${file.reference.jakarta.servlet.jsp.jstl-3.0.1.jar}" iftldtodir="${build.web.dir}/WEB-INF" todir="${dist.ear.dir}/lib"/>
+        <copyfiles files="${file.reference.jakarta.servlet.jsp.jstl-api-3.0.1.jar}" iftldtodir="${build.web.dir}/WEB-INF" todir="${dist.ear.dir}/lib"/>
+        <copyfiles files="${file.reference.mssql-jdbc-12.10.0.jre11.jar}" iftldtodir="${build.web.dir}/WEB-INF" todir="${dist.ear.dir}/lib"/>
+        <copyfiles files="${file.reference.jakarta.activation-api-2.2.0-M1.jar}" iftldtodir="${build.web.dir}/WEB-INF" todir="${dist.ear.dir}/lib"/>
         <mkdir dir="${build.web.dir}/META-INF"/>
         <manifest file="${build.web.dir}/META-INF/MANIFEST.MF" mode="update"/>
     </target>
     <target depends="init" name="library-inclusion-in-archive" unless="dist.ear.dir">
-        <mkdir dir="${build.web.dir}/WEB-INF/lib"/>
-        <copy file="${file.reference.gson-2.10.1.jar}" tofile="${build.web.dir}/WEB-INF/lib/gson-2.10.1.jar" failonerror="false"/>
-        <copy file="${file.reference.jakarta.mail-2.0.1.jar}" tofile="${build.web.dir}/WEB-INF/lib/jakarta.mail-2.0.1.jar" failonerror="false"/>
-        <copy file="${file.reference.jakarta.servlet.jsp.jstl-3.0.1.jar}" tofile="${build.web.dir}/WEB-INF/lib/jakarta.servlet.jsp.jstl-3.0.1.jar" failonerror="false"/>
-        <copy file="${file.reference.jakarta.servlet.jsp.jstl-api-3.0.1.jar}" tofile="${build.web.dir}/WEB-INF/lib/jakarta.servlet.jsp.jstl-api-3.0.1.jar" failonerror="false"/>
-        <copy file="${file.reference.mssql-jdbc-12.10.0.jre11.jar}" tofile="${build.web.dir}/WEB-INF/lib/mssql-jdbc-12.10.0.jre11.jar" failonerror="false"/>
+        <copyfiles files="${file.reference.gson-2.10.1.jar}" todir="${build.web.dir}/WEB-INF/lib"/>
+        <copyfiles files="${file.reference.jakarta.mail-2.0.1.jar}" todir="${build.web.dir}/WEB-INF/lib"/>
+        <copyfiles files="${file.reference.jakarta.servlet.jsp.jstl-3.0.1.jar}" todir="${build.web.dir}/WEB-INF/lib"/>
+        <copyfiles files="${file.reference.jakarta.servlet.jsp.jstl-api-3.0.1.jar}" todir="${build.web.dir}/WEB-INF/lib"/>
+        <copyfiles files="${file.reference.mssql-jdbc-12.10.0.jre11.jar}" todir="${build.web.dir}/WEB-INF/lib"/>
+        <copyfiles files="${file.reference.jakarta.activation-api-2.2.0-M1.jar}" todir="${build.web.dir}/WEB-INF/lib"/>
     </target>
     <target depends="init" if="dist.ear.dir" name="-clean-webinf-lib">
         <delete dir="${build.web.dir}/WEB-INF/lib"/>

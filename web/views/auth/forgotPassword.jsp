@@ -80,7 +80,7 @@
             <div class="card-body">
                 <c:if test="${not empty errorMessage}">
                     <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        <i class="bi bi-exclamation-triangle"></i> ${errorMessage}
+                        <i class="bi bi-exclamation-triangle"></i> <c:out value="${errorMessage}"/>
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
                 </c:if>
@@ -88,7 +88,7 @@
                 <c:if test="${not empty successMessage}">
                     <div class="alert alert-success alert-dismissible fade show" role="alert">
                         <i class="bi bi-check-circle"></i> 
-                        <div>${successMessage}</div>
+                        <c:out value="${successMessage}"/>
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
                 </c:if>

@@ -9,8 +9,11 @@ import jakarta.servlet.http.HttpSession;
 import model.Cart;
 import model.CartItem;
 import model.Product;
+import model.User;
 import productservice.IProductService;
 import productservice.ProductService;
+import cartservice.ICartService;
+import cartservice.CartService;
 
 import java.io.IOException;
 
@@ -23,11 +26,18 @@ import java.io.IOException;
 public class CartServlet extends HttpServlet {
     
     private IProductService productService;
+    private ICartService cartService;
     
     @Override
     public void init() throws ServletException {
         super.init();
-        productService = new ProductService();
+        try {
+            productService = new ProductService();
+            cartService = new CartService();
+        } catch (Exception e) {
+            System.err.println("Error initializing CartServlet: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
     
     @Override
@@ -82,12 +92,48 @@ public class CartServlet extends HttpServlet {
     
     /**
      * Hiển thị giỏ hàng
+     * Nếu đã đăng nhập, load từ DB và merge với session cart
      */
     private void viewCart(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
         
         HttpSession session = request.getSession();
+        User currentUser = (User) session.getAttribute("currentUser");
         Cart cart = getCart(session);
+        
+        // Nếu đã đăng nhập, load cart từ DB và merge với session cart
+        if (currentUser != null && cartService != null) {
+            try {
+                // Load cart từ DB
+                java.util.List<model.CartItemDB> dbCartItems = cartService.getCartItemsByUser(currentUser.getUserID());
+                
+                // Merge DB cart vào session cart
+                for (model.CartItemDB dbItem : dbCartItems) {
+                    Product product = dbItem.getProduct();
+                    if (product != null) {
+                        CartItem cartItem = new CartItem();
+                        cartItem.setProductID(product.getProductID());
+                        cartItem.setProductName(product.getProductName());
+                        cartItem.setImageUrl(product.getImageUrl());
+                        cartItem.setPrice(product.getPrice());
+                        cartItem.setQuantity(dbItem.getQuantity());
+                        cartItem.setStock(product.getStock());
+                        cartItem.setStockStatus(product.getStockStatus());
+                        
+                        // Nếu session cart chưa có, thêm vào
+                        if (!cart.contains(product.getProductID())) {
+                            cart.addItem(cartItem);
+                        }
+                    }
+                }
+                
+                // Lưu cart đã merge vào session
+                session.setAttribute("cart", cart);
+            } catch (Exception e) {
+                System.err.println("Error loading cart from DB: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
         
         request.setAttribute("cartItems", cart.getItems());
         request.setAttribute("cartTotal", cart.getTotal());
@@ -108,7 +154,7 @@ public class CartServlet extends HttpServlet {
             String quantityParam = request.getParameter("quantity");
             
             if (productIDParam == null || productIDParam.trim().isEmpty()) {
-                response.sendRedirect(request.getContextPath() + "/shop");
+                response.sendRedirect(request.getContextPath() + "/home");
                 return;
             }
             
@@ -129,7 +175,7 @@ public class CartServlet extends HttpServlet {
             
             if (product == null) {
                 request.setAttribute("errorMessage", "Sản phẩm không tồn tại");
-                response.sendRedirect(request.getContextPath() + "/shop");
+                response.sendRedirect(request.getContextPath() + "/home");
                 return;
             }
             
@@ -156,6 +202,18 @@ public class CartServlet extends HttpServlet {
             // Thêm vào giỏ hàng (Cart sẽ tự xử lý logic cộng số lượng nếu đã có)
             cart.addItem(cartItem);
             
+            // Nếu đã đăng nhập, lưu vào DB
+            User currentUser = (User) session.getAttribute("currentUser");
+            if (currentUser != null && cartService != null) {
+                try {
+                    cartService.addToCart(currentUser.getUserID(), productID, quantity);
+                } catch (Exception e) {
+                    System.err.println("Error saving cart to DB: " + e.getMessage());
+                    e.printStackTrace();
+                    // Không throw, vẫn tiếp tục với session cart
+                }
+            }
+            
             // Redirect về trang trước hoặc giỏ hàng
             String redirectUrl = request.getParameter("redirect");
             if (redirectUrl != null && !redirectUrl.trim().isEmpty()) {
@@ -167,7 +225,7 @@ public class CartServlet extends HttpServlet {
         } catch (Exception e) {
             e.printStackTrace();
             request.setAttribute("errorMessage", "Lỗi khi thêm sản phẩm vào giỏ hàng: " + e.getMessage());
-            response.sendRedirect(request.getContextPath() + "/shop");
+            response.sendRedirect(request.getContextPath() + "/home");
         }
     }
     
@@ -198,6 +256,17 @@ public class CartServlet extends HttpServlet {
             
             cart.updateQuantity(productID, quantity);
             
+            // Nếu đã đăng nhập, cập nhật trong DB
+            User currentUser = (User) session.getAttribute("currentUser");
+            if (currentUser != null && cartService != null) {
+                try {
+                    cartService.updateQuantity(currentUser.getUserID(), productID, quantity);
+                } catch (Exception e) {
+                    System.err.println("Error updating cart in DB: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+            
             response.sendRedirect(request.getContextPath() + "/cart");
             
         } catch (Exception e) {
@@ -227,6 +296,17 @@ public class CartServlet extends HttpServlet {
             
             cart.removeItem(productID);
             
+            // Nếu đã đăng nhập, xóa khỏi DB
+            User currentUser = (User) session.getAttribute("currentUser");
+            if (currentUser != null && cartService != null) {
+                try {
+                    cartService.removeFromCart(currentUser.getUserID(), productID);
+                } catch (Exception e) {
+                    System.err.println("Error removing cart item from DB: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+            
             response.sendRedirect(request.getContextPath() + "/cart");
             
         } catch (Exception e) {
@@ -244,6 +324,17 @@ public class CartServlet extends HttpServlet {
         HttpSession session = request.getSession();
         Cart cart = getCart(session);
         cart.clear();
+        
+        // Nếu đã đăng nhập, xóa khỏi DB
+        User currentUser = (User) session.getAttribute("currentUser");
+        if (currentUser != null && cartService != null) {
+            try {
+                cartService.clearCart(currentUser.getUserID());
+            } catch (Exception e) {
+                System.err.println("Error clearing cart in DB: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
         
         response.sendRedirect(request.getContextPath() + "/cart");
     }

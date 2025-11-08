@@ -12,33 +12,37 @@
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8f9fa;
-        }
-        
-        .navbar-custom {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            background-color: #1a1a1a;
+            color: #fff;
         }
         
         .product-card {
             border: none;
             border-radius: 10px;
             overflow: hidden;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
             transition: transform 0.3s, box-shadow 0.3s;
             height: 100%;
+            background: #2c2c2c;
+            border: 1px solid #444;
         }
         
         .product-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            box-shadow: 0 5px 20px rgba(139, 92, 246, 0.3);
         }
         
         .product-image {
-            width: 100%;
-            height: 250px;
-            object-fit: cover;
-            background: #f0f0f0;
+            width: 100% !important;
+            height: 250px !important;
+            min-width: 100% !important;
+            min-height: 250px !important;
+            max-width: none !important;
+            max-height: none !important;
+            object-fit: cover !important;
+            object-position: center;
+            background: #1a1a1a;
+            display: block;
         }
         
         .product-price {
@@ -50,7 +54,7 @@
         .product-old-price {
             font-size: 1rem;
             text-decoration: line-through;
-            color: #999;
+            color: #6a6a6a;
         }
         
         .wishlist-icon {
@@ -58,7 +62,7 @@
             top: 10px;
             right: 10px;
             z-index: 10;
-            background: white;
+            background: #2c2c2c;
             border-radius: 50%;
             width: 40px;
             height: 40px;
@@ -66,8 +70,9 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
             transition: transform 0.3s;
+            border: 1px solid #444;
         }
         
         .wishlist-icon:hover {
@@ -77,81 +82,40 @@
         .wishlist-icon.active {
             color: #dc3545;
         }
+        
+        .card-body {
+            color: #fff;
+        }
+        
+        .card-title a {
+            color: #fff !important;
+        }
+        
+        .card-title a:hover {
+            color: #8b5cf6 !important;
+        }
+        
+        .text-muted {
+            color: #b0b0b0 !important;
+        }
+        
+        .btn {
+            border-radius: 8px;
+        }
+        
+        .bg-light {
+            background-color: #1a1a1a !important;
+        }
     </style>
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-custom navbar-dark">
-        <div class="container">
-            <a class="navbar-brand" href="${pageContext.request.contextPath}/index">
-                <i class="bi bi-shop"></i> SmartShop
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="${pageContext.request.contextPath}/index">
-                            <i class="bi bi-house"></i> Trang chủ
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="${pageContext.request.contextPath}/shop">
-                            <i class="bi bi-grid"></i> Cửa hàng
-                        </a>
-                    </li>
-                </ul>
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="${pageContext.request.contextPath}/cart">
-                            <i class="bi bi-cart"></i> Giỏ hàng
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="${pageContext.request.contextPath}/wishlist">
-                            <i class="bi bi-heart"></i> Yêu thích
-                            <span class="badge bg-light text-dark">${wishlistSize != null ? wishlistSize : 0}</span>
-                        </a>
-                    </li>
-                    <c:choose>
-                        <c:when test="${not empty sessionScope.currentUser}">
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-                                    <i class="bi bi-person-circle"></i> ${sessionScope.currentUser.fullName}
-                                </a>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li>
-                                        <a class="dropdown-item" href="${pageContext.request.contextPath}/customer/dashboard">
-                                            <i class="bi bi-speedometer2"></i> Trang cá nhân
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item" href="${pageContext.request.contextPath}/customer/profile">
-                                            <i class="bi bi-person"></i> Thông tin cá nhân
-                                        </a>
-                                    </li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li>
-                                        <a class="dropdown-item" href="${pageContext.request.contextPath}/logout">
-                                            <i class="bi bi-box-arrow-right"></i> Đăng xuất
-                                        </a>
-                                    </li>
-                                </ul>
-                            </li>
-                        </c:when>
-                        <c:otherwise>
-                            <li class="nav-item">
-                                <a class="nav-link" href="${pageContext.request.contextPath}/login">
-                                    <i class="bi bi-box-arrow-in-right"></i> Đăng nhập
-                                </a>
-                            </li>
-                        </c:otherwise>
-                    </c:choose>
-                </ul>
-            </div>
-        </div>
-    </nav>
+    <jsp:include page="/views/common/header.jsp">
+        <jsp:param name="active" value="wishlist" />
+    </jsp:include>
+    
+    <jsp:include page="/views/common/breadcrumb.jsp">
+        <jsp:param name="currentPage" value="Danh sách yêu thích" />
+    </jsp:include>
 
     <!-- Main Content -->
     <div class="container my-5">
@@ -192,8 +156,9 @@
                                 </div>
                                 <div class="card-body">
                                     <h5 class="card-title">
-                                        <a href="${pageContext.request.contextPath}/product/detail?id=${product.productID}" 
-                                           class="text-decoration-none text-dark">
+                                        <a href="javascript:void(0);" 
+                                           onclick="openProductModal(${product.productID})"
+                                           class="text-decoration-none">
                                             ${product.productName}
                                         </a>
                                     </h5>
@@ -244,12 +209,7 @@
         </c:choose>
     </div>
 
-    <!-- Footer -->
-    <footer class="bg-dark text-white text-center py-4 mt-5">
-        <div class="container">
-            <p class="mb-0">&copy; 2024 SmartShop. All rights reserved.</p>
-        </div>
-    </footer>
+    <jsp:include page="/views/common/footer.jsp" />
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -305,6 +265,9 @@
             form.submit();
         }
     </script>
+    
+    <!-- Product Detail Modal -->
+    <jsp:include page="/views/common/productModal.jsp" />
 </body>
 </html>
 

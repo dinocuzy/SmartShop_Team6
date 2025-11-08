@@ -25,7 +25,13 @@ public class PaymentMethodServlet extends HttpServlet {
     @Override
     public void init() throws ServletException {
         super.init();
-        paymentMethodService = new PaymentMethodService();
+        try {
+            paymentMethodService = new PaymentMethodService();
+        } catch (Exception e) {
+            System.err.println("Error initializing PaymentMethodServlet: " + e.getMessage());
+            e.printStackTrace();
+            // Không throw exception để tránh context startup failure
+        }
     }
     
     @Override

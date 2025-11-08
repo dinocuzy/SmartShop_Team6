@@ -1,32 +1,122 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee
-         https://jakarta.ee/xml/ns/jakartaee/web-app_6_0.xsd"
-         version="6.0">
-    
+<web-app version="6.0" xmlns="https://jakarta.ee/xml/ns/jakartaee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee          https://jakarta.ee/xml/ns/jakartaee/web-app_6_0.xsd">
     <display-name>SmartShop</display-name>
     <description>SmartShop E-commerce Application</description>
-    
     <welcome-file-list>
         <welcome-file>index.html</welcome-file>
-        <welcome-file>index.jsp</welcome-file>
     </welcome-file-list>
-    
     <!-- Session timeout: 30 minutes -->
     <session-config>
         <session-timeout>30</session-timeout>
     </session-config>
-    
     <!-- Error pages -->
     <error-page>
-        <error-code>404</error-code>
-        <location>/views/store/home.jsp</location>
+        <error-code>403</error-code>
+        <location>/views/error/403.jsp</location>
     </error-page>
-    
+    <error-page>
+        <error-code>404</error-code>
+        <location>/views/error/404.jsp</location>
+    </error-page>
     <error-page>
         <error-code>500</error-code>
-        <location>/views/store/home.jsp</location>
+        <location>/views/error/500.jsp</location>
     </error-page>
+    <!-- Character encoding filter -->
+    <filter>
+        <filter-name>CharacterEncodingFilter</filter-name>
+        <filter-class>org.apache.catalina.filters.SetCharacterEncodingFilter</filter-class>
+        <init-param>
+            <param-name>encoding</param-name>
+            <param-value>UTF-8</param-value>
+        </init-param>
+        <init-param>
+            <param-name>ignore</param-name>
+            <param-value>false</param-value>
+        </init-param>
+    </filter>
+    <filter-mapping>
+        <filter-name>CharacterEncodingFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+    <!-- Authorization Filter -->
+    <filter>
+        <filter-name>AuthorizationFilter</filter-name>
+        <filter-class>filter.AuthorizationFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>AuthorizationFilter</filter-name>
+        <url-pattern>/admin/*</url-pattern>
+        <url-pattern>/manager/*</url-pattern>
+        <url-pattern>/staff/*</url-pattern>
+        <url-pattern>/customer/*</url-pattern>
+    </filter-mapping>
+    <!-- Storefront Access Filter - Chặn Admin/Manager/Staff truy cập storefront -->
+    <filter>
+        <filter-name>StorefrontAccessFilter</filter-name>
+        <filter-class>filter.StorefrontAccessFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>StorefrontAccessFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+    <!-- VNPay Configuration -->
+    <!-- 
+        Để sử dụng VNPay, bạn cần:
+        1. Đăng ký tài khoản tại https://sandbox.vnpayment.vn/ (test) hoặc https://www.vnpay.vn/ (production)
+        2. Lấy Terminal Code (vnp_TmnCode) và Secret Key (vnp_HashSecret)
+        3. Cập nhật các giá trị bên dưới
+    -->
+    <context-param>
+        <param-name>vnp_TmnCode</param-name>
+        <param-value>6ZNDV1PX</param-value>
+        <description>VNPay Terminal Code - Lấy từ VNPay merchant portal</description>
+    </context-param>
+    <context-param>
+        <param-name>vnp_HashSecret</param-name>
+        <param-value>TTN2LX53HAFF05UWPX4GWKBR8UXZGSA1</param-value>
+        <description>VNPay Secret Key - Lấy từ VNPay merchant portal</description>
+    </context-param>
+    <!-- 
+        VNPay Environment:
+        - Sandbox: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+        - Production: https://www.vnpay.vn/paymentv2/vpcpay.html
+    -->
+    <context-param>
+        <param-name>vnp_PayUrl</param-name>
+        <param-value>https://sandbox.vnpayment.vn/paymentv2/vpcpay.html</param-value>
+        <description>VNPay Payment URL - Sandbox hoặc Production</description>
+    </context-param>
+    <!-- Google Gemini API Configuration (MIỄN PHÍ) -->
+    <!-- 
+        Để sử dụng Google Gemini API (MIỄN PHÍ), bạn cần:
+        1. Truy cập https://aistudio.google.com/app/apikey
+        2. Đăng nhập bằng tài khoản Google
+        3. Click "Create API Key" để tạo API key mới
+        4. Copy API key và cập nhật giá trị gemini_api_key bên dưới
+        
+        Lưu ý: Gemini API có free tier rất rộng rãi và không yêu cầu thanh toán!
+    -->
+    <context-param>
+        <param-name>gemini_api_key</param-name>
+        <param-value>AIzaSyBvd8zI23_jSU4e3vE9zDQTdJbbadQTeIY</param-value>
+        <description>Google Gemini API Key (MIỄN PHÍ) - Lấy từ https://aistudio.google.com/app/apikey</description>
+    </context-param>
+    
+    <!-- OpenAI Configuration (Đã chuyển sang Gemini, giữ lại để backward compatibility) -->
+    <!-- 
+        Đã chuyển sang sử dụng Google Gemini (miễn phí) thay vì OpenAI.
+        Cấu hình này được giữ lại để backward compatibility.
+    -->
+    <context-param>
+        <param-name>openai_api_key</param-name>
+        <param-value>DEPRECATED_USE_GEMINI</param-value>
+        <description>OpenAI API Key - Đã chuyển sang Gemini (Deprecated)</description>
+    </context-param>
+    
+    <!-- Gemini Context Listener - Khởi tạo Gemini API key khi app start -->
+    <listener>
+        <listener-class>listener.GeminiContextListener</listener-class>
+    </listener>
+    
 </web-app>
-

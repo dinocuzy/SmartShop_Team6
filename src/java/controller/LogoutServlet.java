@@ -6,6 +6,11 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import model.User;
+import model.Cart;
+import model.CartItem;
+import cartservice.ICartService;
+import cartservice.CartService;
 
 import java.io.IOException;
 
@@ -16,15 +21,43 @@ import java.io.IOException;
 @WebServlet("/logout")
 public class LogoutServlet extends HttpServlet {
     
+    private ICartService cartService;
+    
+    @Override
+    public void init() throws ServletException {
+        super.init();
+        try {
+            cartService = new CartService();
+        } catch (Exception e) {
+            System.err.println("Error initializing LogoutServlet: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
         
-        // Xóa session
         HttpSession session = request.getSession(false);
         
         if (session != null) {
-            // Xóa tất cả attributes
+            // [LƯU CART VÀO DB] Nếu đã đăng nhập, lưu cart vào DB trước khi logout
+            User currentUser = (User) session.getAttribute("currentUser");
+            Cart cart = (Cart) session.getAttribute("cart");
+            
+            if (currentUser != null && cart != null && !cart.isEmpty() && cartService != null) {
+                try {
+                    // Đồng bộ cart từ session vào DB
+                    java.util.List<CartItem> cartItems = cart.getItems();
+                    cartService.syncCartFromSession(currentUser.getUserID(), cartItems);
+                } catch (Exception e) {
+                    System.err.println("Error saving cart to DB on logout: " + e.getMessage());
+                    e.printStackTrace();
+                    // Không throw, vẫn tiếp tục logout
+                }
+            }
+            
+            // Xóa tất cả attributes và invalidate session
             session.invalidate();
         }
         

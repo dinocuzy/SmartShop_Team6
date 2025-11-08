@@ -82,6 +82,45 @@ public class AuthorizationUtil {
     }
     
     /**
+     * Kiểm tra user có role cụ thể không (theo RoleName) - overload với User object
+     * @param user User object cần kiểm tra
+     * @param roleName Tên role cần kiểm tra
+     * @return true nếu user có role này
+     */
+    public static boolean hasRole(User user, String roleName) {
+        if (user == null) {
+            return false;
+        }
+        if (roleName == null) {
+            return false;
+        }
+        // So sánh với roleName
+        String userRoleName = user.getRoleName();
+        if (userRoleName != null && userRoleName.equalsIgnoreCase(roleName)) {
+            return true;
+        }
+        // Fallback: so sánh theo roleID
+        int roleID = getRoleIDByName(roleName);
+        if (roleID > 0) {
+            return user.getRoleID() == roleID;
+        }
+        return false;
+    }
+    
+    /**
+     * Kiểm tra user có role cụ thể không (theo RoleID) - overload với User object
+     * @param user User object cần kiểm tra
+     * @param roleID RoleID cần kiểm tra
+     * @return true nếu user có role này
+     */
+    public static boolean hasRole(User user, int roleID) {
+        if (user == null) {
+            return false;
+        }
+        return user.getRoleID() == roleID;
+    }
+    
+    /**
      * Kiểm tra user có phải Admin không
      * @param request HttpServletRequest
      * @return true nếu là Admin

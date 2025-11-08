@@ -73,23 +73,27 @@ public class ResetPasswordServlet extends HttpServlet {
             return;
         }
         
+        // Lưu token và email để hiển thị lại form nếu có lỗi
+        Map<String, Object> tokenDataForDisplay = ForgotPasswordServlet.validateResetToken(token);
+        if (tokenDataForDisplay != null) {
+            request.setAttribute("token", token);
+            request.setAttribute("email", tokenDataForDisplay.get("email"));
+        }
+        
         if (password == null || password.trim().isEmpty()) {
             request.setAttribute("errorMessage", "Vui lòng nhập mật khẩu mới");
-            request.setAttribute("token", token);
             request.getRequestDispatcher("/views/auth/resetPassword.jsp").forward(request, response);
             return;
         }
         
         if (password.length() < 6) {
             request.setAttribute("errorMessage", "Mật khẩu phải có ít nhất 6 ký tự");
-            request.setAttribute("token", token);
             request.getRequestDispatcher("/views/auth/resetPassword.jsp").forward(request, response);
             return;
         }
         
         if (!password.equals(confirmPassword)) {
             request.setAttribute("errorMessage", "Mật khẩu xác nhận không khớp");
-            request.setAttribute("token", token);
             request.getRequestDispatcher("/views/auth/resetPassword.jsp").forward(request, response);
             return;
         }
@@ -124,9 +128,10 @@ public class ResetPasswordServlet extends HttpServlet {
             // Xóa token sau khi đã sử dụng
             ForgotPasswordServlet.removeToken(token);
             
-            // Redirect đến trang đăng nhập với thông báo thành công
-            request.getSession().setAttribute("successMessage", "Đặt lại mật khẩu thành công! Vui lòng đăng nhập.");
-            response.sendRedirect(request.getContextPath() + "/login");
+            // Hiển thị thông báo thành công trên cùng trang, không redirect
+            request.setAttribute("successMessage", "Đặt lại mật khẩu thành công! Bạn có thể đăng nhập ngay bây giờ.");
+            request.removeAttribute("token"); // Ẩn form khi đã thành công
+            request.getRequestDispatcher("/views/auth/resetPassword.jsp").forward(request, response);
             
         } catch (Exception e) {
             e.printStackTrace();

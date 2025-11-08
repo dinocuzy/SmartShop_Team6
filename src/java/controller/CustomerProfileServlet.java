@@ -35,9 +35,15 @@ public class CustomerProfileServlet extends HttpServlet {
     @Override
     public void init() throws ServletException {
         super.init();
-        userService = new UserService();
-        addressService = new AddressService();
-        orderService = new OrderService();
+        try {
+            userService = new UserService();
+            addressService = new AddressService();
+            orderService = new OrderService();
+        } catch (Exception e) {
+            System.err.println("Error initializing CustomerProfileServlet: " + e.getMessage());
+            e.printStackTrace();
+            // Không throw exception để tránh context startup failure
+        }
     }
     
     @Override
@@ -134,6 +140,27 @@ public class CustomerProfileServlet extends HttpServlet {
             // Log lỗi chi tiết
             System.err.println("CustomerProfileServlet: Error in doGet: " + e.getMessage());
             e.printStackTrace();
+            
+            // Kiểm tra nếu là JSP compilation error
+            String errorMsg = e.getMessage() != null ? e.getMessage() : "";
+            Throwable cause = e.getCause();
+            while (cause != null) {
+                if (cause.getMessage() != null) {
+                    errorMsg += " | " + cause.getMessage();
+                }
+                cause = cause.getCause();
+            }
+            
+            if (e instanceof jakarta.servlet.jsp.JspException || 
+                errorMsg.contains("JasperException") ||
+                (errorMsg.contains("ClassNotFoundException") && errorMsg.contains("_jsp"))) {
+                
+                // JSP compilation error - redirect về dashboard với error message
+                session.setAttribute("errorMessage", "Lỗi khi tải trang thông tin cá nhân: " + e.getMessage() + 
+                    ". Vui lòng rebuild project và restart server.");
+                response.sendRedirect(request.getContextPath() + "/customer/dashboard");
+                return;
+            }
             
             // Không redirect về dashboard, mà vẫn forward đến JSP với error message
             request.setAttribute("errorMessage", "Lỗi khi tải thông tin: " + e.getMessage());

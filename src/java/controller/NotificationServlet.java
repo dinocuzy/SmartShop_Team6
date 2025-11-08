@@ -29,8 +29,14 @@ public class NotificationServlet extends HttpServlet {
     @Override
     public void init() throws ServletException {
         super.init();
-        notificationService = new NotificationService();
-        userService = new UserService();
+        try {
+            notificationService = new NotificationService();
+            userService = new UserService();
+        } catch (Exception e) {
+            System.err.println("Error initializing NotificationServlet: " + e.getMessage());
+            e.printStackTrace();
+            // Không throw exception để tránh context startup failure
+        }
     }
     
     @Override

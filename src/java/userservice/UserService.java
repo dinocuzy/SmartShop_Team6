@@ -89,7 +89,8 @@ public class UserService implements IUserService {
         if (email == null || email.trim().isEmpty()) {
             throw new IllegalArgumentException("Email cannot be null or empty");
         }
-        return userDAO.getByEmail(email);
+        // DAO sẽ return null nếu user không tồn tại hoặc có lỗi database
+        return userDAO.getByEmail(email.trim());
     }
 
     @Override

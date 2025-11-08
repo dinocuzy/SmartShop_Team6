@@ -160,7 +160,7 @@
                                                                     </c:otherwise>
                                                                 </c:choose>
                                                             </div>
-                                                            <c:if test="${userAddress['default'] == true}">
+                                                            <c:if test="${userAddress.isDefault == true}">
                                                                 <span class="badge bg-success mt-1">
                                                                     <i class="bi bi-star-fill"></i> Mặc định
                                                                 </span>
@@ -358,11 +358,11 @@
                                                 data-address-ward="${fn:escapeXml(address.ward != null ? address.ward : '')}"
                                                 data-address-country="${fn:escapeXml(address.country != null ? address.country : '')}"
                                                 data-address-postalcode="${fn:escapeXml(address.postalCode != null ? address.postalCode : '')}"
-                                                data-address-isdefault="${address['default']}">
+                                                data-address-isdefault="${address.isDefault}">
                                             ${address.fullName != null ? address.fullName : 'Address'} - 
                                             ${address.line1 != null ? address.line1 : ''} 
                                             ${address.city != null ? ', ' += address.city : ''}
-                                            ${address['default'] ? ' (Mặc định)' : ''}
+                                            ${address.isDefault ? ' (Mặc định)' : ''}
                                         </option>
                                     </c:forEach>
                                 </select>
@@ -482,59 +482,104 @@
         // Khi modal được mở với action=edit, hiển thị phần address
         window.addEventListener('DOMContentLoaded', function() {
             <c:if test="${action == 'edit' && not empty user}">
-                // Nếu đang ở chế độ edit, hiển thị modal và phần address
-                const modalElement = document.getElementById('userModal');
-                if (modalElement) {
-                    // Set giá trị cho form user
-                    document.getElementById('modalUserID').value = '${user.userID}';
-                    document.getElementById('modalFullName').value = '${fn:escapeXml(user.fullName)}';
-                    document.getElementById('modalEmail').value = '${fn:escapeXml(user.email)}';
-                    <c:if test="${user.phone != null}">
-                        document.getElementById('modalPhone').value = '${fn:escapeXml(user.phone)}';
-                    </c:if>
-                    document.getElementById('modalRoleID').value = '${user.roleID}';
-                    document.getElementById('modalIsActive').checked = ${user.active};
-                    
-                    // Ẩn password required khi edit
-                document.getElementById('passwordRequired').style.display = 'none';
-                document.getElementById('passwordHint').textContent = 'Để trống nếu không muốn đổi mật khẩu';
-                document.getElementById('modalPasswordHash').required = false;
-                    
-                    // Update modal title
-                    document.getElementById('userModalLabel').innerHTML = '<i class="bi bi-pencil"></i> Chỉnh sửa người dùng';
-                    document.getElementById('modalTitle').textContent = 'Chỉnh sửa người dùng';
-                    
-                    // Hiển thị phần address
-                    document.getElementById('addressSection').style.display = 'block';
-                    
-                    // Load địa chỉ mặc định nếu có (chọn địa chỉ đầu tiên hoặc địa chỉ default)
-                    const addressSelect = document.getElementById('addressSelect');
-                    if (addressSelect && addressSelect.options.length > 1) {
-                        // Tìm địa chỉ default trước, nếu không có thì chọn địa chỉ đầu tiên
-                        let defaultAddressOption = null;
-                        for (let i = 1; i < addressSelect.options.length; i++) {
-                            const option = addressSelect.options[i];
-                            if (option.getAttribute('data-address-isdefault') === 'true') {
-                                defaultAddressOption = option;
-                                break;
+                // Đợi một chút để đảm bảo Bootstrap đã load xong
+                setTimeout(function() {
+                    // Nếu đang ở chế độ edit, hiển thị modal và phần address
+                    const modalElement = document.getElementById('userModal');
+                    if (modalElement) {
+                        // Set giá trị cho form user
+                        document.getElementById('modalUserID').value = '${user.userID}';
+                        document.getElementById('modalFullName').value = '${fn:escapeXml(user.fullName)}';
+                        document.getElementById('modalEmail').value = '${fn:escapeXml(user.email)}';
+                        <c:if test="${user.phone != null}">
+                            document.getElementById('modalPhone').value = '${fn:escapeXml(user.phone)}';
+                        </c:if>
+                        document.getElementById('modalRoleID').value = '${user.roleID}';
+                        document.getElementById('modalIsActive').checked = ${user.active};
+                        
+                        // Ẩn password required khi edit
+                        const passwordRequired = document.getElementById('passwordRequired');
+                        if (passwordRequired) {
+                            passwordRequired.style.display = 'none';
+                        }
+                        const passwordHint = document.getElementById('passwordHint');
+                        if (passwordHint) {
+                            passwordHint.textContent = 'Để trống nếu không muốn đổi mật khẩu';
+                        }
+                        const modalPasswordHash = document.getElementById('modalPasswordHash');
+                        if (modalPasswordHash) {
+                            modalPasswordHash.required = false;
+                        }
+                        
+                        // Update modal title
+                        const userModalLabel = document.getElementById('userModalLabel');
+                        if (userModalLabel) {
+                            userModalLabel.innerHTML = '<i class="bi bi-pencil"></i> Chỉnh sửa người dùng';
+                        }
+                        const modalTitle = document.getElementById('modalTitle');
+                        if (modalTitle) {
+                            modalTitle.textContent = 'Chỉnh sửa người dùng';
+                        }
+                        
+                        // Hiển thị phần address
+                        const addressSection = document.getElementById('addressSection');
+                        if (addressSection) {
+                            addressSection.style.display = 'block';
+                        }
+                        
+                        // Load địa chỉ mặc định nếu có (chọn địa chỉ đầu tiên hoặc địa chỉ default)
+                        const addressSelect = document.getElementById('addressSelect');
+                        if (addressSelect && addressSelect.options.length > 1) {
+                            // Tìm địa chỉ default trước, nếu không có thì chọn địa chỉ đầu tiên
+                            let defaultAddressOption = null;
+                            for (let i = 1; i < addressSelect.options.length; i++) {
+                                const option = addressSelect.options[i];
+                                if (option.getAttribute('data-address-isdefault') === 'true') {
+                                    defaultAddressOption = option;
+                                    break;
+                                }
                             }
+                            if (defaultAddressOption) {
+                                addressSelect.value = defaultAddressOption.value;
+                            } else {
+                                addressSelect.value = addressSelect.options[1].value; // Chọn địa chỉ đầu tiên
+                            }
+                            loadAddressData();
+                        } else if (addressSelect) {
+                            // Nếu không có địa chỉ nào, chọn "Thêm địa chỉ mới"
+                            addressSelect.value = '0';
+                            loadAddressData();
                         }
-                        if (defaultAddressOption) {
-                            addressSelect.value = defaultAddressOption.value;
-                        } else {
-                            addressSelect.value = addressSelect.options[1].value; // Chọn địa chỉ đầu tiên
+                        
+                        // Mở modal - kiểm tra xem Bootstrap có sẵn sàng chưa
+                        try {
+                            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                                const modal = new bootstrap.Modal(modalElement, {
+                                    backdrop: 'static',
+                                    keyboard: false
+                                });
+                                modal.show();
+                            } else {
+                                // Fallback: dùng data attribute
+                                modalElement.setAttribute('data-bs-toggle', 'modal');
+                                modalElement.setAttribute('data-bs-target', '#userModal');
+                                // Hoặc thử cách khác
+                                modalElement.classList.add('show');
+                                modalElement.style.display = 'block';
+                                document.body.classList.add('modal-open');
+                                const backdrop = document.createElement('div');
+                                backdrop.className = 'modal-backdrop fade show';
+                                backdrop.id = 'modalBackdrop';
+                                document.body.appendChild(backdrop);
+                            }
+                        } catch (error) {
+                            console.error('Error opening modal:', error);
+                            // Fallback cuối cùng: thử mở bằng cách thêm class
+                            modalElement.classList.add('show');
+                            modalElement.style.display = 'block';
                         }
-                        loadAddressData();
-                    } else {
-                        // Nếu không có địa chỉ nào, chọn "Thêm địa chỉ mới"
-                        addressSelect.value = '0';
-                        loadAddressData();
                     }
-                    
-                    // Mở modal
-                    const modal = new bootstrap.Modal(modalElement);
-                    modal.show();
-                }
+                }, 100);
             </c:if>
         });
 

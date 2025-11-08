@@ -12,107 +12,67 @@
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8f9fa;
-        }
-        
-        .navbar-custom {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            background-color: #1a1a1a;
+            color: #fff;
         }
         
         .checkout-card {
-            background: white;
+            background: #2c2c2c;
             border-radius: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
             padding: 2rem;
             margin-bottom: 2rem;
+            border: 1px solid #444;
         }
         
         .order-summary-card {
-            background: #f8f9fa;
+            background: #2c2c2c;
             border-radius: 15px;
             padding: 2rem;
             position: sticky;
             top: 20px;
+            border: 1px solid #444;
         }
         
         .cart-item-summary {
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid #444;
             padding: 1rem 0;
         }
         
         .cart-item-summary:last-child {
             border-bottom: none;
         }
+        
+        .form-control, .form-select {
+            background-color: #1a1a1a;
+            border: 1px solid #4a4a4a;
+            color: #fff;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            background-color: #1a1a1a;
+            border-color: #8b5cf6;
+            color: #fff;
+            box-shadow: 0 0 0 0.2rem rgba(139, 92, 246, 0.25);
+        }
+        
+        .form-label {
+            color: #fff;
+        }
+        
+        .text-muted {
+            color: #b0b0b0 !important;
+        }
     </style>
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-custom navbar-dark">
-        <div class="container">
-            <a class="navbar-brand" href="${pageContext.request.contextPath}/index">
-                <i class="bi bi-shop"></i> SmartShop
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="${pageContext.request.contextPath}/index">
-                            <i class="bi bi-house"></i> Trang chủ
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="${pageContext.request.contextPath}/shop">
-                            <i class="bi bi-grid"></i> Cửa hàng
-                        </a>
-                    </li>
-                </ul>
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="${pageContext.request.contextPath}/cart">
-                            <i class="bi bi-cart"></i> Giỏ hàng
-                        </a>
-                    </li>
-                    <c:choose>
-                        <c:when test="${not empty sessionScope.currentUser}">
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-                                    <i class="bi bi-person-circle"></i> ${sessionScope.currentUser.fullName}
-                                </a>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li>
-                                        <a class="dropdown-item" href="${pageContext.request.contextPath}/customer/dashboard">
-                                            <i class="bi bi-speedometer2"></i> Trang cá nhân
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item" href="${pageContext.request.contextPath}/customer/profile">
-                                            <i class="bi bi-person"></i> Thông tin cá nhân
-                                        </a>
-                                    </li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li>
-                                        <a class="dropdown-item" href="${pageContext.request.contextPath}/logout">
-                                            <i class="bi bi-box-arrow-right"></i> Đăng xuất
-                                        </a>
-                                    </li>
-                                </ul>
-                            </li>
-                        </c:when>
-                        <c:otherwise>
-                            <li class="nav-item">
-                                <a class="nav-link" href="${pageContext.request.contextPath}/login">
-                                    <i class="bi bi-box-arrow-in-right"></i> Đăng nhập
-                                </a>
-                            </li>
-                        </c:otherwise>
-                    </c:choose>
-                </ul>
-            </div>
-        </div>
-    </nav>
+    <jsp:include page="/views/common/header.jsp">
+        <jsp:param name="active" value="checkout" />
+    </jsp:include>
+    
+    <jsp:include page="/views/common/breadcrumb.jsp">
+        <jsp:param name="currentPage" value="Thanh toán" />
+    </jsp:include>
 
     <!-- Main Content -->
     <div class="container my-5">
@@ -140,9 +100,9 @@
                                     <select class="form-select" name="shippingAddressID" id="shippingAddressID" required>
                                         <option value="">-- Chọn địa chỉ --</option>
                                         <c:forEach var="address" items="${addresses}">
-                                            <option value="${address.addressID}" ${address.default ? 'selected' : ''}>
+                                            <option value="${address.addressID}" ${address.isDefault ? 'selected' : ''}>
                                                 ${address.fullName} - ${address.phone} - ${address.fullAddress}
-                                                <c:if test="${address.default}"> (Mặc định)</c:if>
+                                                <c:if test="${address.isDefault}"> (Mặc định)</c:if>
                                             </option>
                                         </c:forEach>
                                     </select>
@@ -281,12 +241,7 @@
         </form>
     </div>
 
-    <!-- Footer -->
-    <footer class="bg-dark text-white text-center py-4 mt-5">
-        <div class="container">
-            <p class="mb-0">&copy; 2024 SmartShop. All rights reserved.</p>
-        </div>
-    </footer>
+    <jsp:include page="/views/common/footer.jsp" />
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>

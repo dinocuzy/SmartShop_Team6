@@ -57,13 +57,30 @@ public class HomeServlet extends HttpServlet {
             throws ServletException, IOException {
         
         String servletPath = request.getServletPath();
+        String requestURI = request.getRequestURI();
+        String contextPath = request.getContextPath();
+        String pathInfo = request.getPathInfo();
+        
+        // Debug logging
+        System.out.println("HomeServlet.doGet - servletPath: " + servletPath);
+        System.out.println("HomeServlet.doGet - requestURI: " + requestURI);
+        System.out.println("HomeServlet.doGet - contextPath: " + contextPath);
+        System.out.println("HomeServlet.doGet - pathInfo: " + pathInfo);
         
         // Nếu là /home hoặc /, hiển thị trang chủ (gộp home + shop)
-        if ("/home".equals(servletPath) || "/".equals(servletPath)) {
+        // Đảm bảo root URL luôn vào trang home
+        if ("/home".equals(servletPath) || "/".equals(servletPath) || 
+            (servletPath == null || servletPath.isEmpty())) {
+            System.out.println("HomeServlet: Routing to showHomePage()");
             showHomePage(request, response);
-        } else {
+        } else if ("/shop".equals(servletPath)) {
             // Nếu là /shop, hiển thị trang xem toàn bộ sản phẩm
+            System.out.println("HomeServlet: Routing to showProductList()");
             showProductList(request, response);
+        } else {
+            // Fallback: nếu không match, mặc định hiển thị trang chủ
+            System.out.println("HomeServlet: Unknown path, defaulting to showHomePage()");
+            showHomePage(request, response);
         }
     }
     

@@ -137,6 +137,25 @@ public class OpenAIServlet extends HttpServlet {
         JsonObject jsonResponse = new JsonObject();
         
         try {
+            // Kiểm tra quyền truy cập: Chỉ cho phép Customer hoặc chưa đăng nhập
+            HttpSession session = request.getSession(false);
+            model.User currentUser = null;
+            if (session != null) {
+                currentUser = (model.User) session.getAttribute("currentUser");
+            }
+            
+            // Chặn Admin/Manager/Staff sử dụng chatbot
+            if (currentUser != null) {
+                String roleName = currentUser.getRoleName();
+                if (roleName != null && !roleName.equals("Customer")) {
+                    jsonResponse.addProperty("success", false);
+                    jsonResponse.addProperty("error", "Chỉ khách hàng mới có thể sử dụng chatbot. Vui lòng đăng nhập với tài khoản khách hàng.");
+                    out.print(jsonResponse.toString());
+                    out.flush();
+                    return;
+                }
+            }
+            
             // Kiểm tra API key đã được cấu hình chưa
             if (GeminiUtil.getApiKey() == null || GeminiUtil.getApiKey().isEmpty()) {
                 jsonResponse.addProperty("success", false);
@@ -182,7 +201,10 @@ public class OpenAIServlet extends HttpServlet {
             }
             
             // Lấy conversation history từ session (nếu có)
-            HttpSession session = request.getSession();
+            // Tạo session mới nếu chưa có (cho conversation history)
+            if (session == null) {
+                session = request.getSession();
+            }
             String conversationId = requestJson.has("conversationId") ? 
                     requestJson.get("conversationId").getAsString() : "default";
             

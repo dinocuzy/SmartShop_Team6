@@ -1,5 +1,8 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
-    <!-- AI Chatbot Widget - Xuất hiện trên mọi trang -->
+<%@ taglib prefix="c" uri="jakarta.tags.core" %>
+    <!-- AI Chatbot Widget - Chỉ hiển thị cho Customer hoặc chưa đăng nhập -->
+    <c:choose>
+        <c:when test="${empty sessionScope.currentUser || sessionScope.currentUser.roleName == 'Customer'}">
     <div id="chatbotWidget" class="chatbot-widget">
         <div id="chatbotButton" class="chatbot-button"
             onclick="if(typeof window.toggleChatbot==='function'){window.toggleChatbot();}else{console.error('toggleChatbot not found');}">
@@ -31,14 +34,29 @@
             </div>
         </div>
     </div>
+        </c:when>
+        <c:otherwise>
+            <!-- Chatbot bị ẩn cho Admin/Manager/Staff -->
+        </c:otherwise>
+    </c:choose>
 
     <!-- CRITICAL: Define sendChatbotMessage FULL IMPLEMENTATION IMMEDIATELY after HTML -->
     <!-- This ensures the function is ALWAYS available when HTML onclick handlers are parsed -->
     <script>
         (function() {
-            // Initialize conversation ID
+            // Storage keys
+            const STORAGE_KEY_CONVERSATION_ID = 'chatbot_conversation_id';
+            const STORAGE_KEY_MESSAGES = 'chatbot_messages';
+            
+            // Initialize conversation ID từ localStorage hoặc tạo mới
             if (typeof window.chatbotConversationId === 'undefined') {
-                window.chatbotConversationId = 'global_' + Date.now();
+                const savedConversationId = localStorage.getItem(STORAGE_KEY_CONVERSATION_ID);
+                if (savedConversationId) {
+                    window.chatbotConversationId = savedConversationId;
+                } else {
+                    window.chatbotConversationId = 'global_' + Date.now();
+                    localStorage.setItem(STORAGE_KEY_CONVERSATION_ID, window.chatbotConversationId);
+                }
             }
             
             // Helper function: escapeHtml
@@ -48,8 +66,59 @@
                 return div.innerHTML;
             }
             
+            // Save messages vào localStorage
+            function saveMessagesToStorage() {
+                try {
+                    const messagesContainer = document.getElementById('chatbotMessages');
+                    if (!messagesContainer) return;
+                    
+                    const messageElements = messagesContainer.querySelectorAll('.chatbot-message');
+                    const messages = [];
+                    
+                    messageElements.forEach(function(msgEl) {
+                        const contentSpan = msgEl.querySelector('.message-content span');
+                        if (contentSpan) {
+                            const text = contentSpan.textContent || contentSpan.innerText;
+                            const type = msgEl.classList.contains('user-message') ? 'user' : 'bot';
+                            // Bỏ qua loading messages
+                            if (!msgEl.id || !msgEl.id.startsWith('loading-message-')) {
+                                messages.push({ text: text, type: type });
+                            }
+                        }
+                    });
+                    
+                    localStorage.setItem(STORAGE_KEY_MESSAGES, JSON.stringify(messages));
+                } catch (e) {
+                    console.error('Error saving messages to localStorage:', e);
+                }
+            }
+            
+            // Load messages từ localStorage khi page load
+            function loadMessagesFromStorage() {
+                try {
+                    const savedMessages = localStorage.getItem(STORAGE_KEY_MESSAGES);
+                    if (savedMessages) {
+                        const messages = JSON.parse(savedMessages);
+                        const messagesContainer = document.getElementById('chatbotMessages');
+                        if (messagesContainer && messages.length > 0) {
+                            // Xóa message mặc định nếu có messages đã lưu
+                            messagesContainer.innerHTML = '';
+                            
+                            // Restore messages (skip save để tránh loop)
+                            messages.forEach(function(msg) {
+                                addMessage(msg.text, msg.type, true);
+                            });
+                            // Save một lần sau khi load xong
+                            setTimeout(saveMessagesToStorage, 100);
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error loading messages from localStorage:', e);
+                }
+            }
+            
             // Helper function: addMessage
-            function addMessage(text, type) {
+            function addMessage(text, type, skipSave) {
                 const messagesContainer = document.getElementById('chatbotMessages');
                 if (!messagesContainer) return;
                 
@@ -86,6 +155,11 @@
                         behavior: 'smooth'
                     });
                 }, 100);
+                
+                // Save messages sau khi thêm message mới (trừ khi đang load từ storage)
+                if (!skipSave) {
+                    setTimeout(saveMessagesToStorage, 50);
+                }
                 
                 return messageDiv;
             }
@@ -162,6 +236,9 @@
                         
                         if (botMessage && botMessage.length > 0) {
                             addMessage(botMessage, 'bot');
+                            // Save conversation ID và messages
+                            localStorage.setItem(STORAGE_KEY_CONVERSATION_ID, window.chatbotConversationId);
+                            saveMessagesToStorage();
                         }
                     } else {
                         let errorMsg = data.error || 'Vui lòng thử lại sau';
@@ -171,14 +248,33 @@
                                        'Người dùng có thể liên hệ bộ phận hỗ trợ qua email: smartshop686868@gmail.com hoặc hotline: 0833347220</small>';
                         }
                         addMessage('Xin lỗi, ' + errorMsg, 'bot');
+                        saveMessagesToStorage();
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
                     removeMessage(loadingId);
                     addMessage('Xin lỗi, không thể kết nối đến server. Vui lòng thử lại sau.', 'bot');
+                    saveMessagesToStorage();
                 });
             }
+            
+            // Load messages khi page load (sau khi DOM ready)
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    setTimeout(loadMessagesFromStorage, 100);
+                });
+            } else {
+                setTimeout(loadMessagesFromStorage, 100);
+            }
+            
+            // Lưu messages trước khi page unload
+            window.addEventListener('beforeunload', function() {
+                saveMessagesToStorage();
+            });
+            
+            // Lưu messages định kỳ (mỗi 5 giây)
+            setInterval(saveMessagesToStorage, 5000);
             
             // EXPOSE FUNCTIONS IMMEDIATELY to window
             window.sendChatbotMessageFull = sendChatbotMessageFull;
@@ -694,6 +790,9 @@
                     // Chỉ hiển thị nếu message không rỗng
                     if (botMessage && botMessage.length > 0) {
                         addMessage(botMessage, 'bot');
+                        // Save conversation ID và messages
+                        localStorage.setItem(STORAGE_KEY_CONVERSATION_ID, chatbotConversationId);
+                        saveMessagesToStorage();
                     }
                 } else {
                     // Hiển thị error message chi tiết
@@ -707,12 +806,14 @@
                     }
                     
                     addMessage('Xin lỗi, ' + errorMsg, 'bot');
+                    saveMessagesToStorage();
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
                 removeMessage(loadingId);
                 addMessage('Xin lỗi, không thể kết nối đến server. Vui lòng thử lại sau.', 'bot');
+                saveMessagesToStorage();
             });
         }
         
@@ -833,4 +934,5 @@
             }
         }
     } // Close if (typeof chatbotInitialized === 'undefined')
+    </script>
     </script>

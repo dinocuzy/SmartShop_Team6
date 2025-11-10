@@ -25,11 +25,12 @@
             left: 0;
             height: 100vh;
             width: var(--sidebar-width);
-            background: linear-gradient(180deg, #27ae60 0%, #229954 100%);
+            background: linear-gradient(180deg, #1a1a1a 0%, #2c2c2c 100%);
             color: white;
             overflow-y: auto;
             z-index: 1000;
             box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            border-right: 3px solid #27ae60;
         }
         
         .sidebar-header {
@@ -57,9 +58,9 @@
         
         .sidebar-menu .nav-link:hover,
         .sidebar-menu .nav-link.active {
-            background: rgba(255,255,255,0.1);
+            background: rgba(39, 174, 96, 0.2);
             color: white;
-            border-left-color: white;
+            border-left-color: #27ae60;
         }
         
         .main-content {
@@ -138,6 +139,20 @@
             margin-bottom: 0.5rem;
             color: #27ae60;
         }
+        
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px 10px 0 0 !important;
+            padding: 1rem 1.5rem;
+        }
     </style>
 </head>
 <body>
@@ -175,6 +190,14 @@
                 <i class="bi bi-calendar"></i> <span id="currentDate"></span>
             </div>
         </div>
+        
+        <c:if test="${not empty sessionScope.blockedMessage}">
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <i class="bi bi-exclamation-triangle"></i> ${sessionScope.blockedMessage}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            <c:remove var="blockedMessage" scope="session"/>
+        </c:if>
         
         <c:if test="${not empty errorMessage}">
             <div class="alert alert-danger alert-dismissible fade show" role="alert">

@@ -59,22 +59,13 @@
     </style>
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-dark bg-primary mb-4">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="${pageContext.request.contextPath}/customer/dashboard">
-                <i class="bi bi-shop"></i> SmartShop
-            </a>
-            <div>
-                <a href="${pageContext.request.contextPath}/customer/dashboard" class="btn btn-light btn-sm me-2">
-                    <i class="bi bi-house"></i> Về trang chủ
-                </a>
-                <a href="${pageContext.request.contextPath}/logout" class="btn btn-outline-light btn-sm">
-                    <i class="bi bi-box-arrow-right"></i> Đăng xuất
-                </a>
-            </div>
-        </div>
-    </nav>
+    <jsp:include page="/views/common/header-customer.jsp">
+        <jsp:param name="active" value="profile" />
+    </jsp:include>
+    
+    <jsp:include page="/views/common/breadcrumb.jsp">
+        <jsp:param name="currentPage" value="Thông tin cá nhân" />
+    </jsp:include>
 
     <div class="container profile-container">
         <div class="profile-card">
@@ -197,8 +188,8 @@
                                 <c:when test="${not empty addresses && addresses.size() > 0}">
                                     <div class="address-list">
                                         <c:forEach var="addr" items="${addresses}">
-                                            <div class="address-card ${addr.default ? 'default' : ''}">
-                                                <c:if test="${addr.default}">
+                                            <div class="address-card ${addr.isDefault ? 'default' : ''}">
+                                                <c:if test="${addr.isDefault}">
                                                     <span class="badge bg-success address-badge">Mặc định</span>
                                                 </c:if>
                                                 <div class="d-flex justify-content-between align-items-start">
@@ -217,7 +208,7 @@
                                                         </p>
                                                     </div>
                                                     <div class="btn-group-vertical ms-2">
-                                                        <c:if test="${!addr.default}">
+                                                        <c:if test="${!addr.isDefault}">
                                                             <form method="post" action="${pageContext.request.contextPath}/customer/profile" 
                                                                   class="d-inline" onsubmit="return confirm('Đặt địa chỉ này làm mặc định?');">
                                                                 <input type="hidden" name="action" value="setDefaultAddress">
@@ -240,7 +231,7 @@
                                                                 data-ward="${addr.ward != null ? addr.ward : ''}"
                                                                 data-country="${addr.country != null ? addr.country : 'Việt Nam'}"
                                                                 data-postal-code="${addr.postalCode != null ? addr.postalCode : ''}"
-                                                                data-is-default="${addr.default}">
+                                                                data-is-default="${addr.isDefault}">
                                                             <i class="bi bi-pencil"></i> Sửa
                                                         </button>
                                                         <form method="post" action="${pageContext.request.contextPath}/customer/profile" 

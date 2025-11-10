@@ -55,77 +55,11 @@
     </style>
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-custom navbar-dark">
-        <div class="container">
-            <a class="navbar-brand" href="${pageContext.request.contextPath}/shop">
-                <i class="bi bi-shop"></i> SmartShop
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="${pageContext.request.contextPath}/shop">
-                            <i class="bi bi-house"></i> Trang chủ
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="${pageContext.request.contextPath}/shop">
-                            <i class="bi bi-grid"></i> Cửa hàng
-                        </a>
-                    </li>
-                </ul>
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="${pageContext.request.contextPath}/cart">
-                            <i class="bi bi-cart"></i> Giỏ hàng
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="${pageContext.request.contextPath}/wishlist">
-                            <i class="bi bi-heart"></i> Yêu thích
-                        </a>
-                    </li>
-                    <c:choose>
-                        <c:when test="${not empty sessionScope.currentUser}">
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-                                    <i class="bi bi-person-circle"></i> ${sessionScope.currentUser.fullName}
-                                </a>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li>
-                                        <a class="dropdown-item" href="${pageContext.request.contextPath}/customer/dashboard">
-                                            <i class="bi bi-speedometer2"></i> Trang cá nhân
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item" href="${pageContext.request.contextPath}/customer/profile">
-                                            <i class="bi bi-person"></i> Thông tin cá nhân
-                                        </a>
-                                    </li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li>
-                                        <a class="dropdown-item" href="${pageContext.request.contextPath}/logout">
-                                            <i class="bi bi-box-arrow-right"></i> Đăng xuất
-                                        </a>
-                                    </li>
-                                </ul>
-                            </li>
-                        </c:when>
-                        <c:otherwise>
-                            <li class="nav-item">
-                                <a class="nav-link" href="${pageContext.request.contextPath}/login">
-                                    <i class="bi bi-box-arrow-in-right"></i> Đăng nhập
-                                </a>
-                            </li>
-                        </c:otherwise>
-                    </c:choose>
-                </ul>
-            </div>
-        </div>
-    </nav>
+    <jsp:include page="/views/common/header.jsp" />
+    
+    <jsp:include page="/views/common/breadcrumb.jsp">
+        <jsp:param name="currentPage" value="${product.productName}" />
+    </jsp:include>
 
     <!-- Main Content -->
     <div class="container my-5">
@@ -240,7 +174,7 @@
             
             <!-- Back to Shop -->
             <div class="text-center mt-4">
-                <a href="${pageContext.request.contextPath}/shop" class="btn btn-outline-primary">
+                <a href="${pageContext.request.contextPath}/home" class="btn btn-outline-primary">
                     <i class="bi bi-arrow-left"></i> Quay lại cửa hàng
                 </a>
             </div>
@@ -257,12 +191,7 @@
         </c:if>
     </div>
 
-    <!-- Footer -->
-    <footer class="bg-dark text-white text-center py-4 mt-5">
-        <div class="container">
-            <p class="mb-0">&copy; 2024 SmartShop. All rights reserved.</p>
-        </div>
-    </footer>
+    <jsp:include page="/views/common/footer.jsp" />
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>

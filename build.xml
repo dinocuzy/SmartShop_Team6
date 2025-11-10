@@ -10,6 +10,69 @@
 <project name="SmartShop" default="default" basedir=".">
     <description>Builds, tests, and runs the project SmartShop.</description>
     <import file="nbproject/build-impl.xml"/>
+    
+    <!-- Override annotation processing properties to ensure they are disabled -->
+    <property name="annotation.processing.enabled" value="false"/>
+    <property name="annotation.processing.enabled.in.editor" value="false"/>
+    <property name="annotation.processing.processors.list" value=""/>
+    <property name="annotation.processing.run.all.processors" value="false"/>
+    <property name="annotation.processing.source.output" value=""/>
+    
+    <!-- Override init-ap-cmdline-properties to force annotation processing to be disabled -->
+    <target name="-init-ap-cmdline-properties">
+        <property name="annotation.processing.enabled" value="false"/>
+        <property name="annotation.processing.processors.list" value=""/>
+        <property name="annotation.processing.run.all.processors" value="false"/>
+        <property name="javac.processorpath" value="${javac.classpath}"/>
+        <property name="javac.test.processorpath" value="${javac.test.classpath}"/>
+        <condition property="ap.supported.internal" value="true">
+            <not>
+                <matches pattern="1\.[0-5](\..*)?" string="${javac.source}"/>
+            </not>
+        </condition>
+    </target>
+    
+    <!-- Override init-ap-cmdline-supported to ensure -proc:none is set when disabled -->
+    <target name="-init-ap-cmdline-supported" depends="-init-ap-cmdline-properties" if="ap.supported.internal">
+        <property name="ap.processors.internal" value=""/>
+        <property name="ap.proc.none.internal" value="-proc:none"/>
+    </target>
+    
+    <!-- Override javac macrodef with processors to NOT add -s flag when annotation processing is disabled -->
+    <target name="-init-macrodef-javac-with-processors" depends="-init-ap-cmdline-properties" if="ap.supported.internal">
+        <macrodef name="javac" uri="http://www.netbeans.org/ns/web-project/2">
+            <attribute default="${src.dir}" name="srcdir"/>
+            <attribute default="${build.classes.dir}" name="destdir"/>
+            <attribute default="${javac.classpath}:${j2ee.platform.classpath}" name="classpath"/>
+            <attribute default="${javac.processorpath}" name="processorpath"/>
+            <attribute default="${build.generated.sources.dir}/ap-source-output" name="apgeneratedsrcdir"/>
+            <attribute default="${includes}" name="includes"/>
+            <attribute default="${excludes}" name="excludes"/>
+            <attribute default="${javac.debug}" name="debug"/>
+            <attribute default="${empty.dir}" name="gensrcdir"/>
+            <element name="customize" optional="true"/>
+            <sequential>
+                <property location="${build.dir}/empty" name="empty.dir"/>
+                <mkdir dir="${empty.dir}"/>
+                <javac debug="@{debug}" deprecation="${javac.deprecation}" destdir="@{destdir}" encoding="${source.encoding}" excludes="@{excludes}" fork="${javac.fork}" includeantruntime="false" includes="@{includes}" source="${javac.source}" srcdir="@{srcdir}" target="${javac.target}">
+                    <src>
+                        <dirset dir="@{gensrcdir}" erroronmissingdir="false">
+                            <include name="*"/>
+                        </dirset>
+                    </src>
+                    <classpath>
+                        <path path="@{classpath}"/>
+                    </classpath>
+                    <compilerarg line="${endorsed.classpath.cmd.line.arg}"/>
+                    <compilerarg line="${javac.compilerargs}"/>
+                    <!-- Only add annotation processing flags if annotation processing is enabled -->
+                    <!-- When disabled, ap.proc.none.internal is set to -proc:none, but we don't add -s flag -->
+                    <compilerarg line="${ap.proc.none.internal}"/>
+                    <customize/>
+                </javac>
+            </sequential>
+        </macrodef>
+    </target>
     <!--
 
     There exist several targets which are by default empty and which can be 

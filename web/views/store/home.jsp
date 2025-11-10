@@ -1,7 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
 <%@ taglib prefix="fmt" uri="jakarta.tags.fmt" %>
-<%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -10,197 +9,1147 @@
     <title>SmartShop - Trang chủ</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- Define functions IMMEDIATELY in head to ensure they're available when onclick handlers are evaluated -->
+    <script>
+        // Define openProductModal function early as placeholder
+        // Will be fully implemented when productModal.jsp is loaded at end of body
+        // For now, make it try to load the full implementation if available
+        // Placeholder will delegate to full implementation when available
+        window.openProductModal = function(productID) {
+            console.log('openProductModal called with productID:', productID);
+            // Check if full implementation is available (will be set by productModal.jsp)
+            if (window.openProductModalFull && typeof window.openProductModalFull === 'function') {
+                console.log('Delegating to full implementation');
+                return window.openProductModalFull(productID);
+            }
+            // Fallback: load product data
+            console.warn('Full implementation not ready yet, loading product data...');
+            fetch('${pageContext.request.contextPath}/product/api?id=' + productID)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('HTTP error! status: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        alert('Lỗi: ' + data.error);
+                        return;
+                    }
+                    console.log('Product loaded, trying to show modal...');
+                    // Wait a bit for modal element to be available
+                    setTimeout(function() {
+                        const modalElement = document.getElementById('productDetailModal');
+                        console.log('Modal element:', modalElement);
+                        console.log('Bootstrap available:', typeof bootstrap !== 'undefined');
+                        
+                        if (modalElement) {
+                            // Try to populate modal fields if they exist
+                            try {
+                                const nameEl = document.getElementById('modalProductName');
+                                const codeEl = document.getElementById('modalProductCode');
+                                const imageEl = document.getElementById('modalProductImage');
+                                const priceEl = document.getElementById('modalPriceCurrent');
+                                
+                                if (nameEl) nameEl.textContent = data.productName;
+                                if (codeEl) codeEl.textContent = '#' + data.productID;
+                                if (imageEl) imageEl.src = data.imageUrl || '';
+                                if (priceEl) {
+                                    priceEl.textContent = new Intl.NumberFormat('vi-VN', {
+                                        style: 'currency',
+                                        currency: 'VND'
+                                    }).format(data.discountedPrice);
+                                }
+                            } catch (e) {
+                                console.error('Error populating modal:', e);
+                            }
+                            
+                            // Try to show modal using Bootstrap
+                            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                                try {
+                                    const modal = new bootstrap.Modal(modalElement);
+                                    modal.show();
+                                    console.log('Modal shown using Bootstrap');
+                                } catch (e) {
+                                    console.error('Error showing modal with Bootstrap:', e);
+                                    // Fallback: show manually
+                                    modalElement.style.display = 'block';
+                                    modalElement.classList.add('show');
+                                    document.body.classList.add('modal-open');
+                                    const backdrop = document.createElement('div');
+                                    backdrop.className = 'modal-backdrop fade show';
+                                    backdrop.id = 'productModalBackdrop';
+                                    document.body.appendChild(backdrop);
+                                }
+                            } else {
+                                // Bootstrap not available, show manually
+                                console.warn('Bootstrap not available, showing modal manually');
+                                modalElement.style.display = 'block';
+                                modalElement.classList.add('show');
+                                document.body.classList.add('modal-open');
+                                const backdrop = document.createElement('div');
+                                backdrop.className = 'modal-backdrop fade show';
+                                backdrop.id = 'productModalBackdrop';
+                                backdrop.onclick = function() {
+                                    modalElement.style.display = 'none';
+                                    modalElement.classList.remove('show');
+                                    document.body.classList.remove('modal-open');
+                                    this.remove();
+                                };
+                                document.body.appendChild(backdrop);
+                            }
+                        } else {
+                            console.error('Modal element not found');
+                            alert('Sản phẩm: ' + data.productName + '\nGiá: ' + new Intl.NumberFormat('vi-VN', {
+                                style: 'currency',
+                                currency: 'VND'
+                            }).format(data.discountedPrice) + '\n\nModal chưa được tải. Vui lòng đợi và thử lại.');
+                        }
+                    }, 1000); // Wait 1 second for modal to be included (may need more time)
+                    
+                    // Also try again after 2 seconds
+                    setTimeout(function() {
+                        const modalElement = document.getElementById('productDetailModal');
+                        if (modalElement && !modalElement.classList.contains('show')) {
+                            console.log('Retrying to show modal after 2 seconds...');
+                            // Use full implementation if available now
+                            if (window.openProductModalFull && typeof window.openProductModalFull === 'function') {
+                                window.openProductModalFull(productID);
+                            }
+                        }
+                    }, 2000);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Lỗi khi tải thông tin sản phẩm: ' + error.message);
+                });
+        };
+        
+        // Define addToCart function early
+        if (typeof window.addToCart === 'undefined') {
+            window.addToCart = function(productID, redirectUrl) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '${pageContext.request.contextPath}/cart';
+
+                const productIDInput = document.createElement('input');
+                productIDInput.type = 'hidden';
+                productIDInput.name = 'productID';
+                productIDInput.value = productID;
+                form.appendChild(productIDInput);
+
+                const quantityInput = document.createElement('input');
+                quantityInput.type = 'hidden';
+                quantityInput.name = 'quantity';
+                quantityInput.value = 1;
+                form.appendChild(quantityInput);
+
+                const actionInput = document.createElement('input');
+                actionInput.type = 'hidden';
+                actionInput.name = 'action';
+                actionInput.value = 'add';
+                form.appendChild(actionInput);
+
+                if (redirectUrl) {
+                    const redirectInput = document.createElement('input');
+                    redirectInput.type = 'hidden';
+                    redirectInput.name = 'redirect';
+                    redirectInput.value = redirectUrl;
+                    form.appendChild(redirectInput);
+                }
+
+                document.body.appendChild(form);
+                form.submit();
+            };
+        }
+        
+        // Define toggleWishlist function early
+        if (typeof window.toggleWishlist === 'undefined') {
+            window.toggleWishlist = function(productID, redirectUrl) {
+                let currentPath = window.location.pathname + window.location.search;
+                if (!redirectUrl || redirectUrl === '${pageContext.request.contextPath}/home') {
+                    redirectUrl = currentPath;
+                }
+                
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '${pageContext.request.contextPath}/wishlist';
+                
+                const actionInput = document.createElement('input');
+                actionInput.type = 'hidden';
+                actionInput.name = 'action';
+                actionInput.value = 'toggle';
+                form.appendChild(actionInput);
+                
+                const productIDInput = document.createElement('input');
+                productIDInput.type = 'hidden';
+                productIDInput.name = 'productID';
+                productIDInput.value = productID;
+                form.appendChild(productIDInput);
+                
+                if (redirectUrl) {
+                    const redirectInput = document.createElement('input');
+                    redirectInput.type = 'hidden';
+                    redirectInput.name = 'redirect';
+                    redirectInput.value = redirectUrl;
+                    form.appendChild(redirectInput);
+                }
+                
+                document.body.appendChild(form);
+                form.submit();
+            };
+        }
+        
+        // Define toggleChatbot function early as placeholder
+        // Will be fully implemented when chatbot.jsp is loaded in footer
+        window.toggleChatbot = window.toggleChatbot || function() {
+            console.log('toggleChatbot placeholder called');
+            const chatWindow = document.getElementById('chatbotWindow');
+            if (chatWindow) {
+                const isActive = chatWindow.classList.contains('active');
+                chatWindow.classList.toggle('active');
+                console.log('Chat window toggled manually, isActive now:', !isActive);
+                
+                if (!isActive) {
+                    // Window is opening - try to call full implementation if available
+                    // Otherwise wait a bit and try again
+                    setTimeout(function() {
+                        if (window.toggleChatbotFull && typeof window.toggleChatbotFull === 'function') {
+                            console.log('Full implementation available, calling it');
+                            // Don't call toggleChatbotFull here because window is already toggled
+                            // Just re-initialize handlers
+                            if (window.initChatbotButton && typeof window.initChatbotButton === 'function') {
+                                window.initChatbotButton();
+                            } else {
+                                initChatbotHandlers();
+                            }
+                            
+                            const input = document.getElementById('chatbotInput');
+                            if (input) {
+                                setTimeout(() => input.focus(), 100);
+                            }
+                        } else {
+                            // Initialize handlers manually, but keep checking for full implementation
+                            console.log('Full implementation not ready, using placeholder handlers');
+                            initChatbotHandlers();
+                            
+                            // Keep retrying to get full implementation
+                            let retryCount = 0;
+                            const maxRetries = 10;
+                            const retryInterval = setInterval(function() {
+                                retryCount++;
+                                if (window.initChatbotButton && typeof window.initChatbotButton === 'function') {
+                                    console.log('Full implementation found after retry, re-initializing...');
+                                    window.initChatbotButton();
+                                    clearInterval(retryInterval);
+                                } else if (retryCount >= maxRetries) {
+                                    console.log('Max retries reached, stopping');
+                                    clearInterval(retryInterval);
+                                }
+                            }, 200);
+                            
+                            const input = document.getElementById('chatbotInput');
+                            if (input) {
+                                setTimeout(() => input.focus(), 100);
+                            }
+                        }
+                    }, 50);
+                }
+            } else {
+                console.error('chatbotWindow not found - chatbot may not be loaded yet');
+            }
+            return false;
+        };
+        
+        // Helper function to initialize chatbot handlers
+        function initChatbotHandlers() {
+            console.log('Initializing chatbot handlers from placeholder');
+            
+            // Initialize send button
+            const sendButton = document.querySelector('#chatbotWidget .chatbot-send-btn');
+            if (sendButton) {
+                sendButton.onclick = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Send button clicked (placeholder handler)');
+                    
+                    // Try to call full implementation, with multiple retries
+                    let retryCount = 0;
+                    const maxRetries = 20; // Try for 2 seconds (20 * 100ms)
+                    const trySend = function() {
+                        if (typeof window.sendChatbotMessage === 'function') {
+                            console.log('Calling full sendChatbotMessage implementation');
+                            window.sendChatbotMessage();
+                        } else {
+                            retryCount++;
+                            if (retryCount < maxRetries) {
+                                console.log('sendChatbotMessage not available yet, retrying... (' + retryCount + '/' + maxRetries + ')');
+                                setTimeout(trySend, 100);
+                            } else {
+                                console.error('sendChatbotMessage not available after max retries');
+                                alert('Chatbot đang được tải. Vui lòng đợi và thử lại.');
+                            }
+                        }
+                    };
+                    
+                    // Start trying immediately
+                    trySend();
+                    return false;
+                };
+                sendButton.style.pointerEvents = 'all';
+                sendButton.style.cursor = 'pointer';
+            }
+            
+            // Initialize close button
+            const closeButton = document.querySelector('#chatbotWidget .chatbot-header .btn-close');
+            if (closeButton) {
+                closeButton.onclick = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Close button clicked (placeholder handler)');
+                    const chatWindow = document.getElementById('chatbotWindow');
+                    if (chatWindow) {
+                        chatWindow.classList.remove('active');
+                    }
+                    return false;
+                };
+            }
+        }
+    </script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a1a;
+            color: #fff;
         }
         
-        .navbar-custom {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        /* Hero Banner Section */
+        .hero-banner {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d1b3d 100%);
+            padding: 4rem 0;
+            position: relative;
+            overflow: visible;
         }
         
-        .hero-section {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        .hero-banner .row {
+            display: flex;
+            flex-wrap: wrap;
+            margin-left: -15px;
+            margin-right: -15px;
+        }
+        
+        .hero-banner .col-lg-8 {
+            flex: 0 0 66.666667%;
+            max-width: 66.666667%;
+            padding-left: 15px;
+            padding-right: 15px;
+        }
+        
+        .hero-content {
+            position: relative;
+            min-height: 500px;
+            overflow: hidden;
+            border-radius: 15px;
+        }
+        
+        /* Carousel làm background */
+        .promotion-carousel-hero {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        
+        .promotion-carousel-hero .carousel {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .promotion-carousel-hero .carousel-inner {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .promotion-carousel-hero .carousel-item {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .promotion-banner-hero-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        
+        /* Overlay để text dễ đọc */
+        .carousel-background-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(26, 26, 26, 0.7) 0%, rgba(45, 27, 61, 0.7) 100%);
+            z-index: 2;
+            pointer-events: none;
+        }
+        
+        /* Ẩn carousel controls (prev/next buttons) */
+        .promotion-carousel-hero .carousel-control-prev,
+        .promotion-carousel-hero .carousel-control-next {
+            display: none !important;
+        }
+        
+        /* Style cho carousel indicators (3 gạch ngang) */
+        .promotion-carousel-hero .carousel-indicators {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .promotion-carousel-hero .carousel-indicators button {
+            width: 50px;
+            height: 4px;
+            background-color: rgba(255, 255, 255, 0.5);
+            border: none;
+            border-radius: 2px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            padding: 0;
+            margin: 0;
+            opacity: 0.5;
+        }
+        
+        .promotion-carousel-hero .carousel-indicators button.active {
+            background-color: rgba(255, 255, 255, 1);
+            opacity: 1;
+            width: 60px;
+        }
+        
+        .promotion-carousel-hero .carousel-indicators button:hover {
+            background-color: rgba(255, 255, 255, 0.8);
+            opacity: 0.8;
+        }
+        
+        /* Nội dung hiển thị phía trên */
+        .hero-content-overlay {
+            position: relative;
+            z-index: 3;
+            padding: 2rem;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .hero-text {
+            font-size: 4rem;
+            font-weight: bold;
+            line-height: 1.2;
+            margin-bottom: 2rem;
+            width: 100%;
+            display: block;
+        }
+        
+        .hero-text-main {
+            color: #fff;
+            text-shadow: 0 0 20px rgba(139, 92, 246, 0.8), 0 0 40px rgba(139, 92, 246, 0.5), 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+        
+        .hero-text-sub {
+            color: #ff6b35;
+            text-shadow: 0 0 20px rgba(255, 107, 53, 0.8), 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+        
+        .hero-dots {
+            color: #8b5cf6;
+        }
+        
+        .hero-subtitle {
+            font-size: 1.5rem;
+            color: #fff;
+            margin-bottom: 2rem;
+            width: 100%;
+            display: block;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+        
+        .feature-cards {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 2rem;
+            width: 100%;
+        }
+        
+        .feature-card {
+            background: rgba(139, 92, 246, 0.3);
+            border: 1px solid rgba(139, 92, 246, 0.6);
+            border-radius: 10px;
+            padding: 1rem 1.5rem;
+            font-weight: bold;
+            color: #fff;
+            font-size: 0.9rem;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        .hero-promo-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        
+        .hero-promo-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .promo-card {
+            border-radius: 15px;
+            padding: 1.5rem;
             color: white;
-            padding: 5rem 0;
-            margin-bottom: 3rem;
+            position: relative;
+            overflow: hidden;
+            min-height: 200px;
+        }
+        
+        .promo-card-with-bg {
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        
+        .promo-card-bg-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.5) 100%);
+            z-index: 1;
+            transition: opacity 0.3s ease;
+        }
+        
+        .promo-card:hover .promo-card-bg-overlay {
+            opacity: 0.5;
+        }
+        
+        .promo-card-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        
+        .promo-card-text {
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            opacity: 0.9;
+        }
+        
+        .promo-card-price {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+        
+        
+        .promo-card-btn {
+            background: white;
+            color: #dc3545;
+            border: none;
+            padding: 0.5rem 1.5rem;
+            border-radius: 20px;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform 0.3s;
+        }
+        
+        .promo-card-btn:hover {
+            transform: scale(1.05);
+            color: #dc3545;
+        }
+        
+        /* Categories Grid */
+        .categories-grid-section {
+            padding: 3rem 0;
+        }
+        
+        .section-title {
+            font-size: 2rem;
+            font-weight: bold;
+            color: white;
+            margin-bottom: 2rem;
+        }
+        
+        .category-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: white;
+            transition: transform 0.3s;
+        }
+        
+        .category-item:hover {
+            transform: translateY(-5px);
+            color: white;
+            text-decoration: none;
+        }
+        
+        .category-icon-wrapper {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .category-icon-wrapper i {
+            font-size: 2rem;
+            color: white;
+        }
+        
+        .category-name {
+            font-size: 0.9rem;
+            text-align: center;
+        }
+        
+        /* Golden Hour Deal */
+        .golden-hour-deal {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d1b3d 100%);
+            padding: 3rem 0;
+            border-radius: 15px;
+            margin: 3rem 0;
+        }
+        
+        .countdown-timer {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+        
+        .time-box {
+            background: #2c2c2c;
+            border: 2px solid #8b5cf6;
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            min-width: 80px;
+        }
+        
+        .time-box span {
+            display: block;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #ff6b35;
+        }
+        
+        .deal-stages {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        
+        .deal-stage {
+            background: #2c2c2c;
+            border: 2px solid #4a4a4a;
+            border-radius: 10px;
+            padding: 1rem 1.5rem;
+            text-align: center;
+        }
+        
+        .deal-stage.active {
+            border-color: #ff6b35;
+            background: rgba(255, 107, 53, 0.1);
+        }
+        
+        /* Carousel Controls Styling */
+        .promotion-carousel-hero .carousel-control-prev,
+        .promotion-carousel-hero .carousel-control-next {
+            width: 40px;
+            height: 40px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 50%;
+            top: 50%;
+            transform: translateY(-50%);
+            opacity: 0.7;
+        }
+        
+        .promotion-carousel-hero .carousel-control-prev {
+            left: 10px;
+        }
+        
+        .promotion-carousel-hero .carousel-control-next {
+            right: 10px;
+        }
+        
+        .promotion-carousel-hero .carousel-control-prev:hover,
+        .promotion-carousel-hero .carousel-control-next:hover {
+            opacity: 1;
+            background: rgba(0, 0, 0, 0.7);
+        }
+        
+        .promotion-carousel-hero .carousel-control-prev-icon,
+        .promotion-carousel-hero .carousel-control-next-icon {
+            width: 20px;
+            height: 20px;
+        }
+        
+        /* Best-selling Products */
+        .best-selling-products {
+            padding: 3rem 0;
+        }
+        
+        .section-title-large {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: white;
+        }
+        
+        .section-nav {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .section-nav-link {
+            color: #b0b0b0;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .section-nav-link:hover,
+        .section-nav-link.active {
+            color: white;
+            text-decoration: none;
+        }
+        
+        .products-scroll {
+            display: flex;
+            gap: 1.5rem;
+            overflow-x: auto;
+            padding: 1rem 0;
+            scroll-behavior: smooth;
+        }
+        
+        .products-scroll::-webkit-scrollbar {
+            height: 8px;
+        }
+        
+        .products-scroll::-webkit-scrollbar-track {
+            background: #2c2c2c;
+            border-radius: 10px;
+        }
+        
+        .products-scroll::-webkit-scrollbar-thumb {
+            background: #8b5cf6;
+            border-radius: 10px;
+        }
+        
+        .product-card-home {
+            min-width: 250px;
+            background: #2c2c2c;
+            border-radius: 15px;
+            overflow: hidden;
+            transition: transform 0.3s;
+        }
+        
+        .product-card-home:hover {
+            transform: translateY(-5px);
+        }
+        
+        .product-image-home {
+            width: 100%;
+            height: 200px;
+            min-width: 100%;
+            min-height: 200px;
+            object-fit: cover;
+            object-position: center;
+            display: block;
+        }
+        
+        .product-info-home {
+            padding: 1rem;
+        }
+        
+        .product-name-home {
+            font-weight: bold;
+            color: white;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+        
+        .product-price-home {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #dc3545;
+            margin-bottom: 0.25rem;
+        }
+        
+        .product-old-price-home {
+            font-size: 0.9rem;
+            color: #6a6a6a;
+            text-decoration: line-through;
+            margin-bottom: 0.5rem;
+        }
+        
+        .product-status {
+            font-size: 0.85rem;
+            color: #b0b0b0;
+            margin-bottom: 0.5rem;
+        }
+        
+        .add-to-cart-btn {
+            width: 100%;
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 0.5rem;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        
+        .product-discount-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #dc3545;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 5px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            z-index: 1;
+        }
+        
+        /* Products Grid Section (from shop) */
+        .products-grid-section {
+            padding: 3rem 0;
         }
         
         .product-card {
             border: none;
             border-radius: 10px;
             overflow: hidden;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
             transition: transform 0.3s, box-shadow 0.3s;
             height: 100%;
+            background: #2c2c2c;
         }
         
         .product-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            box-shadow: 0 5px 20px rgba(139, 92, 246, 0.3);
         }
         
         .product-image {
             width: 100%;
-            height: 200px;
+            height: 250px;
+            min-width: 100%;
+            min-height: 250px;
             object-fit: cover;
-            background: #f0f0f0;
+            object-position: center;
+            background: #1a1a1a;
+            display: block;
         }
         
         .product-price {
-            font-size: 1.25rem;
+            font-size: 1.5rem;
             font-weight: bold;
             color: #dc3545;
         }
         
-        .product-old-price {
-            font-size: 0.9rem;
-            text-decoration: line-through;
-            color: #999;
+        /* Bottom Service Bar */
+        .service-bar {
+            background: #2c2c2c;
+            padding: 3rem 0;
+            margin-top: 3rem;
         }
         
-        .badge-special {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            z-index: 10;
+        .service-item {
+            text-align: center;
+            color: white;
         }
         
-        .section-title {
-            font-size: 2rem;
-            font-weight: 600;
-            margin-bottom: 2rem;
-            color: #333;
+        .service-icon {
+            font-size: 2.5rem;
+            color: #dc3545;
+            margin-bottom: 1rem;
         }
         
-        .category-card {
+        /* Floating Buttons */
+        .floating-buttons {
+            position: fixed;
+            bottom: 100px;
+            right: 2rem;
+            z-index: 998; /* Thấp hơn chatbot (z-index: 901) */
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .floating-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #dc3545;
+            color: white;
             border: none;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            font-size: 1.5rem;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4);
             transition: transform 0.3s;
-            text-decoration: none;
-            color: inherit;
         }
         
-        .category-card:hover {
-            transform: translateY(-5px);
-            color: inherit;
+        .floating-btn:hover {
+            transform: scale(1.1);
         }
     </style>
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-custom navbar-dark">
+    <jsp:include page="/views/common/header.jsp">
+        <jsp:param name="active" value="home" />
+    </jsp:include>
+
+    <!-- Hero Banner Section -->
+    <section class="hero-banner">
         <div class="container">
-            <a class="navbar-brand" href="${pageContext.request.contextPath}/shop">
-                <i class="bi bi-shop"></i> SmartShop
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="${pageContext.request.contextPath}/shop">
-                            <i class="bi bi-house"></i> Trang chủ
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="${pageContext.request.contextPath}/shop">
-                            <i class="bi bi-grid"></i> Cửa hàng
-                        </a>
-                    </li>
-                </ul>
-                <ul class="navbar-nav">
-                    <c:choose>
-                        <c:when test="${not empty sessionScope.currentUser}">
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-                                    <i class="bi bi-person-circle"></i> ${sessionScope.currentUser.fullName}
-                                </a>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li>
-                                        <a class="dropdown-item" href="${pageContext.request.contextPath}/customer/dashboard">
-                                            <i class="bi bi-speedometer2"></i> Trang cá nhân
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item" href="${pageContext.request.contextPath}/customer/profile">
-                                            <i class="bi bi-person"></i> Thông tin cá nhân
-                                        </a>
-                                    </li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li>
-                                        <a class="dropdown-item" href="${pageContext.request.contextPath}/logout">
-                                            <i class="bi bi-box-arrow-right"></i> Đăng xuất
-                                        </a>
-                                    </li>
-                                </ul>
-                            </li>
-                        </c:when>
-                        <c:otherwise>
-                            <li class="nav-item">
-                                <a class="nav-link" href="${pageContext.request.contextPath}/login">
-                                    <i class="bi bi-box-arrow-in-right"></i> Đăng nhập
-                                </a>
-                            </li>
-                        </c:otherwise>
-                    </c:choose>
-                </ul>
+            <div class="row">
+                <div class="col-lg-8 hero-content">
+                    <!-- Promotion Banner Carousel làm background -->
+                    <div class="promotion-carousel-hero">
+                        <div id="promotionCarouselHero" class="carousel slide" data-bs-ride="carousel" data-bs-interval="3000">
+                            <div class="carousel-inner">
+                                <div class="carousel-item active">
+                                    <img src="${pageContext.request.contextPath}/images/promotion-banner-1.jpg" 
+                                         class="d-block w-100 promotion-banner-hero-img" 
+                                         alt="Khuyến mãi 1"
+                                         data-carousel-index="0"
+                                         onerror="this.onerror=null; this.style.display='none';">
+                                </div>
+                                <div class="carousel-item">
+                                    <img src="${pageContext.request.contextPath}/images/promotion-banner-2.jpg" 
+                                         class="d-block w-100 promotion-banner-hero-img" 
+                                         alt="Khuyến mãi 2"
+                                         data-carousel-index="1"
+                                         onerror="this.onerror=null; this.style.display='none';">
+                                </div>
+                                <div class="carousel-item">
+                                    <img src="${pageContext.request.contextPath}/images/promotion-banner-3.jpg" 
+                                         class="d-block w-100 promotion-banner-hero-img" 
+                                         alt="Khuyến mãi 3"
+                                         data-carousel-index="2"
+                                         onerror="this.onerror=null; this.style.display='none';">
+                                </div>
+                            </div>
+                            <!-- Carousel Indicators (3 gạch ngang) -->
+                            <div class="carousel-indicators">
+                                <button type="button" data-bs-target="#promotionCarouselHero" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
+                                <button type="button" data-bs-target="#promotionCarouselHero" data-bs-slide-to="1" aria-label="Slide 2"></button>
+                                <button type="button" data-bs-target="#promotionCarouselHero" data-bs-slide-to="2" aria-label="Slide 3"></button>
+                            </div>
+                        </div>
+                        <!-- Overlay để text dễ đọc -->
+                        <div class="carousel-background-overlay"></div>
+                    </div>
+                    
+                    <!-- Nội dung hiển thị phía trên carousel -->
+                    <div class="hero-content-overlay">
+                        <div class="hero-text">
+                            <span class="hero-text-main">KHAI TRƯƠNG</span>
+                            <span class="hero-dots"> • </span>
+                            <span class="hero-text-sub">CỬA HÀNG</span>
+                        </div>
+                        <p class="hero-subtitle">Giảm giá lên đến 30% - Ưu đãi đặc biệt</p>
+                        <div class="feature-cards">
+                            <div class="feature-card">BẢO HÀNH NHANH CHÓNG</div>
+                            <div class="feature-card">TRẢ GÓP 0%</div>
+                            <div class="feature-card">FREESHIP</div>
+                            <div class="feature-card">CHÍNH HÃNG 100%</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 hero-promo-section">
+                    <!-- Promo Cards với background từ ảnh sản phẩm -->
+                    <div class="hero-promo-cards">
+                        <c:if test="${not empty featuredProducts}">
+                            <c:forEach var="product" items="${featuredProducts}" varStatus="status">
+                                <div class="promo-card promo-card-with-bg" 
+                                     data-promo-index="${status.index}"
+                                     <c:if test="${not empty product.imageUrl}">data-product-image="${product.imageUrl}"</c:if>
+                                     style="position: relative; overflow: hidden;">
+                                    <div class="promo-card-bg-overlay"></div>
+                                    <div class="promo-card-content" style="position: relative; z-index: 2;">
+                                        <h5 class="promo-card-title">${product.categoryName != null ? product.categoryName : 'SẢN PHẨM'}</h5>
+                                        <p class="promo-card-text">Khai trương cửa hàng - Giảm lên đến 30%</p>
+                                        <p class="promo-card-price">
+                                            Giá chỉ từ 
+                                            <fmt:formatNumber value="${product.price}" type="currency" 
+                                                currencyCode="VND" currencySymbol="₫" groupingUsed="true"/>
+                                        </p>
+                                        <a href="javascript:void(0);" 
+                                           onclick="openProductModal(${product.productID})"
+                                           class="btn promo-card-btn">XEM NGAY</a>
+                                    </div>
+                                </div>
+                            </c:forEach>
+                        </c:if>
+                    </div>
+                </div>
             </div>
         </div>
-    </nav>
-
-    <!-- Hero Section -->
-    <div class="hero-section">
-        <div class="container text-center">
-            <h1 class="display-4 mb-4">Chào mừng đến với SmartShop</h1>
-            <p class="lead mb-4">Cửa hàng trực tuyến thông minh - Nơi mua sắm tốt nhất</p>
-            <a href="${pageContext.request.contextPath}/shop" class="btn btn-light btn-lg">
-                <i class="bi bi-shop"></i> Khám phá ngay
-            </a>
-        </div>
-    </div>
+    </section>
 
     <!-- Main Content -->
-    <div class="container">
-        <!-- Categories -->
-        <c:if test="${not empty categories}">
-            <section class="mb-5">
-                <h2 class="section-title"><i class="bi bi-tags"></i> Danh mục sản phẩm</h2>
-                <div class="row g-4">
+    <div class="container my-5">
+        <!-- Categories Grid -->
+        <section class="mb-5 categories-grid-section">
+            <h2 class="section-title text-center mb-4"><i class="bi bi-grid-3x3-gap-fill"></i> Danh mục sản phẩm</h2>
+            <div class="row g-3 justify-content-center">
+                <c:if test="${not empty categories}">
                     <c:forEach var="category" items="${categories}">
-                        <div class="col-md-3 col-sm-6">
-                            <a href="${pageContext.request.contextPath}/shop?category=${category.categoryID}" 
-                               class="category-card card text-center">
-                                <div class="card-body">
-                                    <i class="bi bi-tag" style="font-size: 3rem; color: #667eea;"></i>
-                                    <h5 class="mt-3">${category.categoryName}</h5>
+                        <div class="col-lg-1 col-md-2 col-sm-3 col-4">
+                            <a href="${pageContext.request.contextPath}/shop?category=${category.categoryID}" class="category-item">
+                                <div class="category-icon-wrapper">
+                                    <i class="bi bi-tag"></i>
                                 </div>
+                                <span class="category-name">${category.categoryName}</span>
                             </a>
                         </div>
                     </c:forEach>
+                </c:if>
+            </div>
+        </section>
+
+        <!-- Golden Hour Deal Section -->
+        <section class="mb-5 golden-hour-deal">
+            <h2 class="section-title text-center mb-4"><i class="bi bi-lightning-fill text-warning"></i> KHAI TRƯƠNG CỬA HÀNG</h2>
+            <div class="text-center mb-3">
+                <p class="text-white-50 mb-1">Nhanh lên nào! Sự kiện khai trương sẽ kết thúc sau</p>
+                <div id="countdown" class="countdown-timer">
+                    <div class="time-box"><span id="days">00</span> Ngày</div>
+                    <div class="time-box"><span id="hours">00</span> Giờ</div>
+                    <div class="time-box"><span id="minutes">00</span> Phút</div>
+                    <div class="time-box"><span id="seconds">00</span> Giây</div>
                 </div>
-            </section>
-        </c:if>
-        
-        <!-- Featured Products -->
-        <c:if test="${not empty featuredProducts}">
-            <section class="mb-5">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h2 class="section-title mb-0"><i class="bi bi-star-fill"></i> Sản phẩm nổi bật</h2>
-                    <a href="${pageContext.request.contextPath}/shop" class="btn btn-outline-primary">
-                        Xem tất cả <i class="bi bi-arrow-right"></i>
+            </div>
+            <div class="deal-stages">
+                <div class="deal-stage active">
+                    <span>07/01 - 08/01</span>
+                    <small>Đang diễn ra</small>
+                </div>
+                <div class="deal-stage">
+                    <span>09/01 - 11/01</span>
+                    <small>Sắp diễn ra</small>
+                </div>
+                <div class="deal-stage">
+                    <span>12/01 - 15/01</span>
+                    <small>Sắp diễn ra</small>
+                </div>
+            </div>
+            
+        </section>
+
+        <!-- Best-selling Products Section -->
+        <section class="mb-5 best-selling-products">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="section-title-large mb-0 text-primary"><i class="bi bi-fire"></i> Sản phẩm bán chạy</h2>
+                <div class="section-nav">
+                    <a href="#" class="section-nav-link active">Gợi ý hôm nay</a>
+                    <span style="color: #4a4a4a;">•</span>
+                    <a href="${pageContext.request.contextPath}/shop?category=4" class="section-nav-link">Máy chơi game</a>
+                    <span style="color: #4a4a4a;">•</span>
+                    <a href="${pageContext.request.contextPath}/shop?category=5" class="section-nav-link">Máy tính bàn (PC)</a>
+                    <span style="color: #4a4a4a;">•</span>
+                    <a href="${pageContext.request.contextPath}/shop?category=6" class="section-nav-link">Tai nghe</a>
+                    <a href="${pageContext.request.contextPath}/shop" class="section-nav-link" style="margin-left: 1rem;">
+                        Xem thêm <i class="bi bi-chevron-right"></i>
                     </a>
                 </div>
+            </div>
+            
+            <div class="products-scroll" id="productsScroll">
+                <c:forEach var="product" items="${bestSellingProducts}">
+                    <div class="product-card-home" style="position: relative;">
+                        <c:if test="${product.price != null}">
+                            <span class="product-discount-badge">-17%</span>
+                        </c:if>
+                        <c:choose>
+                            <c:when test="${not empty product.imageUrl}">
+                                <img src="${product.imageUrl}" class="product-image-home" alt="${product.productName}">
+                            </c:when>
+                            <c:otherwise>
+                                <div class="product-image-home d-flex align-items-center justify-content-center bg-light">
+                                    <i class="bi bi-image" style="font-size: 3rem; color: #ccc;"></i>
+                                </div>
+                            </c:otherwise>
+                        </c:choose>
+                        <div class="product-info-home">
+                            <div class="product-name-home">
+                                <a href="javascript:void(0);" 
+                                   onclick="openProductModal(${product.productID})"
+                                   style="color: white; text-decoration: none;">
+                                    ${product.productName}
+                                </a>
+                            </div>
+                            <div class="product-price-home">
+                                <fmt:formatNumber value="${product.price}" type="currency" 
+                                    currencyCode="VND" currencySymbol="₫" groupingUsed="true"/>
+                            </div>
+                            <div class="product-old-price-home">
+                                <fmt:formatNumber value="${product.price * 1.2}" type="currency" 
+                                    currencyCode="VND" currencySymbol="₫" groupingUsed="true"/>
+                            </div>
+                            <div class="product-status">Vừa mở bán</div>
+                            <button class="btn add-to-cart-btn" 
+                                    onclick="addToCart(${product.productID}, '${pageContext.request.contextPath}/home')">
+                                Thêm vào giỏ
+                            </button>
+                        </div>
+                    </div>
+                </c:forEach>
+            </div>
+        </section>
+        
+        <!-- All Products Grid Section -->
+        <section class="products-grid-section">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="section-title-large mb-0"><i class="bi bi-shop"></i> Tất cả sản phẩm</h2>
+                <a href="${pageContext.request.contextPath}/shop" class="btn btn-outline-primary">
+                    Xem tất cả <i class="bi bi-arrow-right"></i>
+                </a>
+            </div>
+            
+            <c:if test="${not empty products}">
                 <div class="row g-4">
-                    <c:forEach var="product" items="${featuredProducts}">
+                    <c:forEach var="product" items="${products}">
                         <div class="col-md-3 col-sm-6">
                             <div class="card product-card">
                                 <c:if test="${product.special}">
-                                    <span class="badge bg-warning text-dark badge-special">
+                                    <span class="badge bg-warning text-dark" style="position: absolute; top: 10px; right: 10px; z-index: 1;">
                                         <i class="bi bi-star-fill"></i> Đặc biệt
                                     </span>
                                 </c:if>
@@ -209,141 +1158,369 @@
                                         <img src="${product.imageUrl}" class="product-image" alt="${product.productName}">
                                     </c:when>
                                     <c:otherwise>
-                                        <div class="product-image d-flex align-items-center justify-content-center bg-light">
+                                        <div class="product-image d-flex align-items-center justify-content-center">
                                             <i class="bi bi-image" style="font-size: 3rem; color: #ccc;"></i>
                                         </div>
                                     </c:otherwise>
                                 </c:choose>
                                 <div class="card-body">
-                                    <h6 class="card-title">
-                                        <a href="${pageContext.request.contextPath}/product?id=${product.productID}" 
-                                           class="text-decoration-none text-dark">
+                                    <h5 class="card-title">
+                                        <a href="javascript:void(0);" 
+                                           onclick="openProductModal(${product.productID})"
+                                           class="text-decoration-none text-white">
                                             ${product.productName}
                                         </a>
-                                    </h6>
+                                    </h5>
+                                    <p class="card-text text-muted small">
+                                        ${product.categoryName != null ? product.categoryName : 'Chưa phân loại'}
+                                    </p>
                                     <div class="mb-2">
                                         <span class="product-price">
                                             <fmt:formatNumber value="${product.price}" type="currency" 
                                                 currencyCode="VND" currencySymbol="₫" groupingUsed="true"/>
                                         </span>
                                     </div>
-                                    <div class="d-flex justify-content-between align-items-center">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
                                         <c:choose>
                                             <c:when test="${product.stockStatus == 'InStock' && product.stock > 0}">
-                                                <span class="badge bg-success">Còn hàng</span>
+                                                <span class="badge bg-success">Còn hàng (${product.stock})</span>
                                             </c:when>
                                             <c:otherwise>
                                                 <span class="badge bg-danger">Hết hàng</span>
                                             </c:otherwise>
                                         </c:choose>
-                                        <a href="${pageContext.request.contextPath}/product?id=${product.productID}" 
-                                           class="btn btn-sm btn-primary">
-                                            <i class="bi bi-eye"></i>
-                                        </a>
+                                    </div>
+                                    <div class="d-grid gap-2">
+                                        <c:if test="${product.stockStatus == 'InStock' && product.stock > 0}">
+                                            <button class="btn btn-primary btn-sm" 
+                                                    onclick="addToCart(${product.productID}, '${pageContext.request.contextPath}/home')">
+                                                <i class="bi bi-cart-plus"></i> Thêm vào giỏ
+                                            </button>
+                                        </c:if>
+                                        <div class="btn-group" role="group">
+                                            <button class="btn btn-outline-secondary btn-sm" 
+                                                    onclick="openProductModal(${product.productID})"
+                                                    title="Xem chi tiết">
+                                                <i class="bi bi-eye"></i> Xem
+                                            </button>
+                                            <button class="btn btn-outline-danger btn-sm" 
+                                                    onclick="toggleWishlist(${product.productID})"
+                                                    title="Thêm vào yêu thích">
+                                                <i class="bi bi-heart"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </c:forEach>
                 </div>
-            </section>
-        </c:if>
-        
-        <!-- New Products -->
-        <c:if test="${not empty newProducts}">
-            <section class="mb-5">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h2 class="section-title mb-0"><i class="bi bi-clock-history"></i> Sản phẩm mới</h2>
-                    <a href="${pageContext.request.contextPath}/shop" class="btn btn-outline-primary">
-                        Xem tất cả <i class="bi bi-arrow-right"></i>
-                    </a>
-                </div>
-                <div class="row g-4">
-                    <c:forEach var="product" items="${newProducts}">
-                        <div class="col-md-3 col-sm-6">
-                            <div class="card product-card">
-                                <c:if test="${product.special}">
-                                    <span class="badge bg-warning text-dark badge-special">
-                                        <i class="bi bi-star-fill"></i> Đặc biệt
-                                    </span>
+                
+                <!-- Pagination -->
+                <c:if test="${totalPages > 1}">
+                    <nav aria-label="Product pagination" class="mt-4">
+                        <ul class="pagination justify-content-center">
+                            <c:if test="${currentPage > 1}">
+                                <li class="page-item">
+                                    <a class="page-link" href="${pageContext.request.contextPath}/home?page=${currentPage - 1}${categoryID > 0 ? '&category=' : ''}${categoryID > 0 ? categoryID : ''}${searchKeyword != null ? '&search=' : ''}${searchKeyword != null ? searchKeyword : ''}">
+                                        <i class="bi bi-chevron-left"></i>
+                                    </a>
+                                </li>
+                            </c:if>
+                            
+                            <c:forEach var="i" begin="1" end="${totalPages}">
+                                <c:if test="${i == 1 || i == totalPages || (i >= currentPage - 2 && i <= currentPage + 2)}">
+                                    <li class="page-item ${i == currentPage ? 'active' : ''}">
+                                        <a class="page-link" href="${pageContext.request.contextPath}/home?page=${i}${categoryID > 0 ? '&category=' : ''}${categoryID > 0 ? categoryID : ''}${searchKeyword != null ? '&search=' : ''}${searchKeyword != null ? searchKeyword : ''}">
+                                            ${i}
+                                        </a>
+                                    </li>
                                 </c:if>
-                                <c:choose>
-                                    <c:when test="${not empty product.imageUrl}">
-                                        <img src="${product.imageUrl}" class="product-image" alt="${product.productName}">
-                                    </c:when>
-                                    <c:otherwise>
-                                        <div class="product-image d-flex align-items-center justify-content-center bg-light">
-                                            <i class="bi bi-image" style="font-size: 3rem; color: #ccc;"></i>
-                                        </div>
-                                    </c:otherwise>
-                                </c:choose>
-                                <div class="card-body">
-                                    <h6 class="card-title">
-                                        <a href="${pageContext.request.contextPath}/product?id=${product.productID}" 
-                                           class="text-decoration-none text-dark">
-                                            ${product.productName}
-                                        </a>
-                                    </h6>
-                                    <div class="mb-2">
-                                        <span class="product-price">
-                                            <fmt:formatNumber value="${product.price}" type="currency" 
-                                                currencyCode="VND" currencySymbol="₫" groupingUsed="true"/>
-                                        </span>
-                                    </div>
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <c:choose>
-                                            <c:when test="${product.stockStatus == 'InStock' && product.stock > 0}">
-                                                <span class="badge bg-success">Còn hàng</span>
-                                            </c:when>
-                                            <c:otherwise>
-                                                <span class="badge bg-danger">Hết hàng</span>
-                                            </c:otherwise>
-                                        </c:choose>
-                                        <a href="${pageContext.request.contextPath}/product?id=${product.productID}" 
-                                           class="btn btn-sm btn-primary">
-                                            <i class="bi bi-eye"></i>
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </c:forEach>
-                </div>
-            </section>
-        </c:if>
+                                <c:if test="${i == currentPage - 3 || i == currentPage + 3}">
+                                    <li class="page-item disabled">
+                                        <span class="page-link">...</span>
+                                    </li>
+                                </c:if>
+                            </c:forEach>
+                            
+                            <c:if test="${currentPage < totalPages}">
+                                <li class="page-item">
+                                    <a class="page-link" href="${pageContext.request.contextPath}/home?page=${currentPage + 1}${categoryID > 0 ? '&category=' : ''}${categoryID > 0 ? categoryID : ''}${searchKeyword != null ? '&search=' : ''}${searchKeyword != null ? searchKeyword : ''}">
+                                        <i class="bi bi-chevron-right"></i>
+                                    </a>
+                                </li>
+                            </c:if>
+                        </ul>
+                    </nav>
+                </c:if>
+            </c:if>
+        </section>
     </div>
 
-    <!-- Footer -->
-    <footer class="bg-dark text-white py-5 mt-5">
+    <!-- Bottom Service Bar -->
+    <section class="service-bar">
         <div class="container">
-            <div class="row">
-                <div class="col-md-4">
-                    <h5><i class="bi bi-shop"></i> SmartShop</h5>
-                    <p>Cửa hàng trực tuyến thông minh - Nơi mua sắm tốt nhất</p>
+            <div class="row g-4">
+                <div class="col-lg-2 col-md-4 col-sm-6">
+                    <div class="service-item">
+                        <i class="bi bi-truck service-icon"></i>
+                        <p>GIAO HỎA TỐC<br><small>Nội thành Đà Nẵng trong 4h</small></p>
+                    </div>
                 </div>
-                <div class="col-md-4">
-                    <h5>Liên kết nhanh</h5>
-                    <ul class="list-unstyled">
-                        <li><a href="${pageContext.request.contextPath}/shop" class="text-white-50 text-decoration-none">Cửa hàng</a></li>
-                        <li><a href="${pageContext.request.contextPath}/login" class="text-white-50 text-decoration-none">Đăng nhập</a></li>
-                    </ul>
+                <div class="col-lg-2 col-md-4 col-sm-6">
+                    <div class="service-item">
+                        <i class="bi bi-credit-card service-icon"></i>
+                        <p>TRẢ GÓP ƯU ĐÃI<br><small>Hỗ trợ vay với lãi suất thấp</small></p>
+                    </div>
                 </div>
-                <div class="col-md-4">
-                    <h5>Liên hệ</h5>
-                    <p class="text-white-50">
-                        <i class="bi bi-envelope"></i> binh222120@gmail.com<br>
-                        <i class="bi bi-telephone"></i> 0833347220
-                    </p>
+                <div class="col-lg-2 col-md-4 col-sm-6">
+                    <div class="service-item">
+                        <i class="bi bi-fire service-icon"></i>
+                        <p>DEAL HOT BÙNG NỔ<br><small>Flash sale giảm giá cực sốc</small></p>
+                    </div>
                 </div>
-            </div>
-            <hr class="bg-white-50">
-            <div class="text-center">
-                <p class="mb-0">&copy; 2024 SmartShop. All rights reserved.</p>
+                <div class="col-lg-2 col-md-4 col-sm-6">
+                    <div class="service-item">
+                        <i class="bi bi-arrow-repeat service-icon"></i>
+                        <p>MIỄN PHÍ ĐỔI TRẢ<br><small>Trong vòng 30 ngày miễn phí</small></p>
+                    </div>
+                </div>
+                <div class="col-lg-2 col-md-4 col-sm-6">
+                    <div class="service-item">
+                        <i class="bi bi-headset service-icon"></i>
+                        <p>HỖ TRỢ 24/7<br><small>Hỗ trợ khách hàng 24/7</small></p>
+                    </div>
+                </div>
             </div>
         </div>
-    </footer>
+    </section>
 
+    <!-- Product Detail Modal - Include BEFORE footer to ensure it's loaded early -->
+    <jsp:include page="/views/common/productModal.jsp" />
+    
+    <jsp:include page="/views/common/footer.jsp" />
+
+    <!-- Floating Action Buttons (Scroll to top và Cart) -->
+    <div class="floating-buttons">
+        <button class="btn btn-danger rounded-circle mb-2" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+            <i class="bi bi-arrow-up"></i>
+        </button>
+        <a href="${pageContext.request.contextPath}/cart" class="btn btn-danger rounded-circle">
+            <i class="bi bi-cart"></i>
+        </a>
+    </div>
+    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Functions are already defined in <head> section
+        
+        // Set background images for promo cards from product images
+        function setPromoCardBackgrounds() {
+            const promoCards = document.querySelectorAll('.promo-card-with-bg[data-product-image]');
+            promoCards.forEach(function(card) {
+                const imageUrl = card.getAttribute('data-product-image');
+                if (imageUrl) {
+                    card.style.backgroundImage = 'url(' + imageUrl + ')';
+                    card.style.backgroundSize = 'cover';
+                    card.style.backgroundPosition = 'center';
+                    card.style.backgroundRepeat = 'no-repeat';
+                }
+            });
+        }
+        
+        // Set hero-content height to match content and promo cards
+        function setCarouselHeight() {
+            const heroContentOverlay = document.querySelector('.hero-content-overlay');
+            const heroContent = document.querySelector('.hero-content');
+            const promoCardsContainer = document.querySelector('.hero-promo-cards');
+            
+            if (heroContentOverlay && heroContent && promoCardsContainer) {
+                // Lấy chiều cao của nội dung overlay
+                const overlayHeight = heroContentOverlay.offsetHeight;
+                // Lấy chiều cao của promo cards
+                const promoCardsHeight = promoCardsContainer.offsetHeight;
+                
+                // Set chiều cao cho hero-content = max của cả hai (tối thiểu 500px)
+                const targetHeight = Math.max(overlayHeight, promoCardsHeight, 500);
+                heroContent.style.minHeight = targetHeight + 'px';
+                heroContent.style.height = targetHeight + 'px';
+                
+                console.log('Hero content height set to:', targetHeight, 'overlay:', overlayHeight, 'promo:', promoCardsHeight);
+            } else {
+                // Retry nếu chưa có
+                setTimeout(setCarouselHeight, 200);
+            }
+        }
+        
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            setPromoCardBackgrounds();
+            
+            // Cập nhật lại khi carousel images load xong
+            const carouselImages = document.querySelectorAll('.promotion-banner-hero-img');
+            carouselImages.forEach(function(img) {
+                if (img.complete) {
+                    setCarouselHeight();
+                } else {
+                    img.addEventListener('load', function() {
+                        setCarouselHeight();
+                    });
+                    img.addEventListener('error', function() {
+                        // Nếu ảnh lỗi, vẫn cập nhật chiều cao
+                        setCarouselHeight();
+                    });
+                }
+            });
+            
+            // Delay để đảm bảo DOM và images đã render xong
+            setTimeout(setCarouselHeight, 100);
+            setTimeout(setCarouselHeight, 300);
+            setTimeout(setCarouselHeight, 500);
+        });
+        
+        window.addEventListener('load', function() {
+            setPromoCardBackgrounds();
+            setCarouselHeight();
+            // Retry sau khi tất cả images load xong
+            setTimeout(setCarouselHeight, 200);
+            setTimeout(setCarouselHeight, 500);
+        });
+        
+        // Cập nhật lại khi resize window
+        let resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(setCarouselHeight, 250);
+        });
+        
+        // Countdown Timer Logic - Sử dụng thời gian kết thúc khuyến mãi từ database
+        <c:choose>
+            <c:when test="${not empty latestPromotion && not empty latestPromotion.endDate}">
+                // Chuyển đổi endDate từ Java Date sang JavaScript Date
+                <fmt:formatDate value="${latestPromotion.endDate}" pattern="yyyy-MM-dd'T'HH:mm:ss" var="formattedEndDate" />
+                const endDate = new Date('${formattedEndDate}');
+                const countdownDate = endDate.getTime();
+                
+                const countdownTimer = setInterval(function() {
+                    const now = new Date().getTime();
+                    const distance = countdownDate - now;
+
+                    if (distance < 0) {
+                        clearInterval(countdownTimer);
+                        const countdownElement = document.getElementById("countdown");
+                        if (countdownElement) {
+                            countdownElement.innerHTML = '<div class="alert alert-warning">Sự kiện đã kết thúc</div>';
+                        }
+                        return;
+                    }
+
+                    const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                    const daysElement = document.getElementById("days");
+                    const hoursElement = document.getElementById("hours");
+                    const minutesElement = document.getElementById("minutes");
+                    const secondsElement = document.getElementById("seconds");
+                    
+                    if (daysElement) daysElement.innerHTML = days < 10 ? "0" + days : days;
+                    if (hoursElement) hoursElement.innerHTML = hours < 10 ? "0" + hours : hours;
+                    if (minutesElement) minutesElement.innerHTML = minutes < 10 ? "0" + minutes : minutes;
+                    if (secondsElement) secondsElement.innerHTML = seconds < 10 ? "0" + seconds : seconds;
+                }, 1000);
+            </c:when>
+            <c:otherwise>
+                // Không có promotion nào, ẩn countdown hoặc hiển thị thông báo
+                const countdownElement = document.getElementById("countdown");
+                if (countdownElement) {
+                    countdownElement.innerHTML = '<div class="alert alert-info">Hiện tại không có khuyến mãi nào</div>';
+                }
+            </c:otherwise>
+        </c:choose>
+
+        // Horizontal Scroll for Products
+        const productsScroll = document.getElementById('productsScroll');
+        if (productsScroll) {
+            let isDown = false;
+            let startX;
+            let scrollLeft;
+
+            productsScroll.addEventListener('mousedown', (e) => {
+                isDown = true;
+                productsScroll.classList.add('active');
+                startX = e.pageX - productsScroll.offsetLeft;
+                scrollLeft = productsScroll.scrollLeft;
+            });
+            productsScroll.addEventListener('mouseleave', () => {
+                isDown = false;
+                productsScroll.classList.remove('active');
+            });
+            productsScroll.addEventListener('mouseup', () => {
+                isDown = false;
+                productsScroll.classList.remove('active');
+            });
+            productsScroll.addEventListener('mousemove', (e) => {
+                if (!isDown) return;
+                e.preventDefault();
+                const x = e.pageX - productsScroll.offsetLeft;
+                const walk = (x - startX) * 1;
+                productsScroll.scrollLeft = scrollLeft - walk;
+            });
+        }
+
+        // Functions already defined at the top of this script block
+        
+        // Handle subscribe notification
+        window.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const subscribe = urlParams.get('subscribe');
+            const message = urlParams.get('message');
+            
+            if (subscribe) {
+                let alertType = 'info';
+                let alertMessage = 'Cảm ơn bạn đã đăng ký!';
+                
+                if (subscribe === 'success') {
+                    alertType = 'success';
+                    alertMessage = message || 'Đăng ký thành công! Cảm ơn bạn đã đăng ký nhận ưu đãi.';
+                } else if (subscribe === 'error') {
+                    alertType = 'danger';
+                    alertMessage = message || 'Đăng ký thất bại. Vui lòng thử lại.';
+                } else if (subscribe === 'info') {
+                    alertType = 'info';
+                    alertMessage = message || 'Email này đã được đăng ký.';
+                }
+                
+                // Create and show alert
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-' + alertType + ' alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
+                alertDiv.style.zIndex = '9999';
+                alertDiv.style.minWidth = '400px';
+                
+                // Determine icon class
+                let iconClass = 'info-circle';
+                if (alertType === 'success') {
+                    iconClass = 'check-circle';
+                } else if (alertType === 'danger') {
+                    iconClass = 'exclamation-triangle';
+                }
+                
+                alertDiv.innerHTML = 
+                    '<i class="bi bi-' + iconClass + '"></i> ' +
+                    alertMessage +
+                    '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+                document.body.appendChild(alertDiv);
+                
+                // Auto remove after 5 seconds
+                setTimeout(function() {
+                    if (alertDiv.parentNode) {
+                        alertDiv.remove();
+                    }
+                }, 5000);
+            }
+        });
+    </script>
 </body>
 </html>
 

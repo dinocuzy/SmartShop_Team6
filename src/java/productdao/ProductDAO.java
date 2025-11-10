@@ -52,9 +52,12 @@ public class ProductDAO implements IProductDAO {
     
     @Override
     public Product getById(int productID) {
-        String sql = "SELECT ProductID, CategoryID, ProductName, Slug, Description, Price, " +
-                     "Size, Color, IsSpecial, Stock, StockStatus, ImageUrl, CreatedAt, UpdatedAt " +
-                     "FROM Products WHERE ProductID = ?";
+        String sql = "SELECT p.ProductID, p.CategoryID, p.ProductName, p.Slug, p.Description, p.Price, " +
+                     "p.Size, p.Color, p.IsSpecial, p.Stock, p.StockStatus, p.ImageUrl, " +
+                     "p.CreatedAt, p.UpdatedAt, c.CategoryName " +
+                     "FROM Products p " +
+                     "LEFT JOIN Categories c ON p.CategoryID = c.CategoryID " +
+                     "WHERE p.ProductID = ?";
         
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -63,7 +66,13 @@ public class ProductDAO implements IProductDAO {
             
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return mapResultSetToProduct(rs);
+                    Product product = mapResultSetToProduct(rs);
+                    // Set categoryName từ JOIN
+                    String categoryName = rs.getString("CategoryName");
+                    if (categoryName != null) {
+                        product.setCategoryName(categoryName);
+                    }
+                    return product;
                 }
             }
         } catch (SQLException e) {

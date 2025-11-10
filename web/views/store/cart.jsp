@@ -12,129 +12,286 @@
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8f9fa;
+            background-color: #1a1a1a;
+            color: #fff;
         }
         
-        .navbar-custom {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        .cart-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: white;
+            margin-bottom: 2rem;
         }
         
-        .cart-card {
-            background: white;
+        /* Promotional Banner */
+        .promo-banner {
+            background: #2c2c2c;
+            border: 2px solid #ff6b35;
+            border-radius: 10px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .promo-text {
+            color: white;
+            font-size: 1rem;
+        }
+        
+        .promo-progress {
+            flex: 1;
+            height: 8px;
+            background: #4a4a4a;
+            border-radius: 10px;
+            margin: 0 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .promo-progress-bar {
+            height: 100%;
+            background: #ff6b35;
+            border-radius: 10px;
+            transition: width 0.3s;
+        }
+        
+        .promo-icon {
+            color: #b0b0b0;
+            font-size: 1.2rem;
+        }
+        
+        /* Cart Table */
+        .cart-table-container {
+            background: #2c2c2c;
             border-radius: 15px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             padding: 2rem;
             margin-bottom: 2rem;
         }
         
-        .cart-item {
-            border-bottom: 1px solid #eee;
-            padding: 1.5rem 0;
+        .cart-table {
+            width: 100%;
+            color: white;
         }
         
-        .cart-item:last-child {
+        .cart-table thead th {
+            border-bottom: 2px solid #4a4a4a;
+            padding: 1rem 0;
+            font-weight: 600;
+            color: #b0b0b0;
+            text-align: left;
+        }
+        
+        .cart-table tbody td {
+            padding: 1.5rem 0;
+            border-bottom: 1px solid #4a4a4a;
+            vertical-align: middle;
+        }
+        
+        .cart-table tbody tr:last-child td {
             border-bottom: none;
         }
         
+        .product-info-cart {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
         .product-image-cart {
-            width: 120px;
-            height: 120px;
-            object-fit: cover;
-            border-radius: 10px;
-        }
-        
-        .quantity-input {
             width: 80px;
-            text-align: center;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 8px;
+            background: white;
         }
         
-        .summary-card {
-            background: #f8f9fa;
+        .product-name-cart {
+            font-weight: 600;
+            color: white;
+            margin-bottom: 0.25rem;
+        }
+        
+        .product-code {
+            font-size: 0.85rem;
+            color: #b0b0b0;
+        }
+        
+        .price-cart {
+            color: #dc3545;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        
+        .quantity-control {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .quantity-btn {
+            width: 35px;
+            height: 35px;
+            border: 1px solid #4a4a4a;
+            background: #2c2c2c;
+            color: white;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .quantity-btn:hover {
+            background: #4a4a4a;
+            border-color: #6a6a6a;
+        }
+        
+        .quantity-input-cart {
+            width: 60px;
+            height: 35px;
+            text-align: center;
+            border: 1px solid #4a4a4a;
+            background: #2c2c2c;
+            color: white;
+            border-radius: 5px;
+        }
+        
+        .quantity-input-cart:focus {
+            outline: none;
+            border-color: #8b5cf6;
+        }
+        
+        .remove-btn {
+            background: transparent;
+            border: none;
+            color: #dc3545;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        
+        .remove-btn:hover {
+            transform: scale(1.2);
+            color: #c82333;
+        }
+        
+        /* Summary Panel */
+        .summary-panel {
+            background: #2c2c2c;
+            border: 2px solid #dc3545;
             border-radius: 15px;
             padding: 2rem;
             position: sticky;
             top: 20px;
         }
+        
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+            border-bottom: 1px solid #4a4a4a;
+        }
+        
+        .summary-item:last-child {
+            border-bottom: none;
+        }
+        
+        .summary-label {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: white;
+            font-weight: 500;
+        }
+        
+        .summary-label i {
+            color: #8b5cf6;
+        }
+        
+        .summary-change-link {
+            color: #8b5cf6;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+        
+        .summary-change-link:hover {
+            color: #a78bfa;
+            text-decoration: none;
+        }
+        
+        .total-section {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 2px solid #4a4a4a;
+        }
+        
+        .total-label {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+            margin-bottom: 0.5rem;
+        }
+        
+        .total-amount {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #dc3545;
+        }
+        
+        .discount-note {
+            font-size: 0.85rem;
+            color: #b0b0b0;
+            margin-top: 1rem;
+            text-align: center;
+        }
+        
+        .checkout-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 1rem 2rem;
+            font-size: 1.2rem;
+            font-weight: bold;
+            width: 100%;
+            margin-top: 1.5rem;
+            transition: background 0.3s;
+        }
+        
+        .checkout-btn:hover {
+            background: #c82333;
+            color: white;
+        }
+        
+        .empty-cart {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #b0b0b0;
+        }
+        
+        .empty-cart-icon {
+            font-size: 5rem;
+            color: #4a4a4a;
+            margin-bottom: 1rem;
+        }
     </style>
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-custom navbar-dark">
-        <div class="container">
-            <a class="navbar-brand" href="${pageContext.request.contextPath}/index">
-                <i class="bi bi-shop"></i> SmartShop
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="${pageContext.request.contextPath}/index">
-                            <i class="bi bi-house"></i> Trang chủ
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="${pageContext.request.contextPath}/shop">
-                            <i class="bi bi-grid"></i> Cửa hàng
-                        </a>
-                    </li>
-                </ul>
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <a class="nav-link" href="${pageContext.request.contextPath}/cart">
-                            <i class="bi bi-cart"></i> Giỏ hàng 
-                            <span class="badge bg-light text-dark">${cartSize != null ? cartSize : 0}</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="${pageContext.request.contextPath}/wishlist">
-                            <i class="bi bi-heart"></i> Yêu thích
-                        </a>
-                    </li>
-                    <c:choose>
-                        <c:when test="${not empty sessionScope.currentUser}">
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-                                    <i class="bi bi-person-circle"></i> ${sessionScope.currentUser.fullName}
-                                </a>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li>
-                                        <a class="dropdown-item" href="${pageContext.request.contextPath}/customer/dashboard">
-                                            <i class="bi bi-speedometer2"></i> Trang cá nhân
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a class="dropdown-item" href="${pageContext.request.contextPath}/customer/profile">
-                                            <i class="bi bi-person"></i> Thông tin cá nhân
-                                        </a>
-                                    </li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li>
-                                        <a class="dropdown-item" href="${pageContext.request.contextPath}/logout">
-                                            <i class="bi bi-box-arrow-right"></i> Đăng xuất
-                                        </a>
-                                    </li>
-                                </ul>
-                            </li>
-                        </c:when>
-                        <c:otherwise>
-                            <li class="nav-item">
-                                <a class="nav-link" href="${pageContext.request.contextPath}/login">
-                                    <i class="bi bi-box-arrow-in-right"></i> Đăng nhập
-                                </a>
-                            </li>
-                        </c:otherwise>
-                    </c:choose>
-                </ul>
-            </div>
-        </div>
-    </nav>
+    <jsp:include page="/views/common/header.jsp">
+        <jsp:param name="active" value="cart" />
+    </jsp:include>
+    
+    <jsp:include page="/views/common/breadcrumb.jsp">
+        <jsp:param name="currentPage" value="Giỏ hàng" />
+    </jsp:include>
 
     <!-- Main Content -->
     <div class="container my-5">
-        <h2 class="mb-4"><i class="bi bi-cart"></i> Giỏ hàng của bạn</h2>
+        <h1 class="cart-title">Giỏ hàng</h1>
         
         <c:if test="${not empty errorMessage}">
             <div class="alert alert-warning alert-dismissible fade show" role="alert">
@@ -152,92 +309,111 @@
         
         <div class="row">
             <div class="col-lg-8">
-                <div class="cart-card">
+                <!-- Promotional Banner -->
+                <c:if test="${not empty sessionScope.cart && !sessionScope.cart.isEmpty()}">
+                    <c:set var="cartTotal" value="${sessionScope.cart.total}" />
+                    <c:set var="targetAmount" value="5000000" />
+                    <c:set var="remainingAmount" value="${targetAmount - cartTotal.doubleValue()}" />
+                    <c:if test="${remainingAmount > 0}">
+                        <div class="promo-banner">
+                            <div class="promo-text">
+                                Bạn cần mua thêm 
+                                <strong style="color: #ff6b35;">
+                                    <fmt:formatNumber value="${remainingAmount}" type="currency" 
+                                        currencyCode="VND" currencySymbol="₫" groupingUsed="true"/>
+                                </strong> 
+                                để được giảm 50k
+                            </div>
+                            <div class="promo-progress">
+                                <div class="promo-progress-bar" 
+                                     style="width: ${(cartTotal.doubleValue() / targetAmount) * 100}%"></div>
+                            </div>
+                            <i class="bi bi-trash promo-icon"></i>
+                        </div>
+                    </c:if>
+                </c:if>
+                
+                <!-- Cart Table -->
+                <div class="cart-table-container">
                     <c:choose>
-                        <c:when test="${not empty cartItems && cartItems.size() > 0}">
-                            <c:forEach var="item" items="${cartItems}">
-                                <div class="cart-item">
-                                    <div class="row align-items-center">
-                                        <div class="col-md-2">
-                                            <c:choose>
-                                                <c:when test="${not empty item.imageUrl}">
-                                                    <img src="${item.imageUrl}" class="product-image-cart" alt="${item.productName}">
-                                                </c:when>
-                                                <c:otherwise>
-                                                    <div class="product-image-cart d-flex align-items-center justify-content-center bg-light">
-                                                        <i class="bi bi-image" style="font-size: 2rem; color: #ccc;"></i>
+                        <c:when test="${not empty sessionScope.cart && !sessionScope.cart.isEmpty()}">
+                            <table class="cart-table">
+                                <thead>
+                                    <tr>
+                                        <th>Sản phẩm</th>
+                                        <th>Đơn giá</th>
+                                        <th>Số lượng</th>
+                                        <th>Tạm tính</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <c:forEach var="item" items="${sessionScope.cart.items}">
+                                        <tr>
+                                            <td>
+                                                <div class="product-info-cart">
+                                                    <c:choose>
+                                                        <c:when test="${not empty item.imageUrl}">
+                                                            <img src="${item.imageUrl}" class="product-image-cart" alt="${item.productName}">
+                                                        </c:when>
+                                                        <c:otherwise>
+                                                            <div class="product-image-cart d-flex align-items-center justify-content-center">
+                                                                <i class="bi bi-image" style="font-size: 2rem; color: #4a4a4a;"></i>
+                                                            </div>
+                                                        </c:otherwise>
+                                                    </c:choose>
+                                                    <div>
+                                                        <div class="product-name-cart">${item.productName}</div>
+                                                        <div class="product-code">Mã: #${item.productID}</div>
                                                     </div>
-                                                </c:otherwise>
-                                            </c:choose>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <h5>${item.productName}</h5>
-                                            <p class="text-muted mb-0">Mã: #${item.productID}</p>
-                                            <c:if test="${item.stockStatus == 'InStock' && item.stock > 0}">
-                                                <span class="badge bg-success">Còn hàng</span>
-                                            </c:if>
-                                            <c:if test="${item.stockStatus == 'OutOfStock' || item.stock <= 0}">
-                                                <span class="badge bg-danger">Hết hàng</span>
-                                            </c:if>
-                                        </div>
-                                        <div class="col-md-2">
-                                            <p class="mb-0">
-                                                <strong>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="price-cart">
                                                     <fmt:formatNumber value="${item.price}" type="currency" 
                                                         currencyCode="VND" currencySymbol="₫" groupingUsed="true"/>
-                                                </strong>
-                                            </p>
-                                        </div>
-                                        <div class="col-md-2">
-                                            <form method="post" action="${pageContext.request.contextPath}/cart" class="d-inline">
-                                                <input type="hidden" name="action" value="update">
-                                                <input type="hidden" name="productID" value="${item.productID}">
-                                                <div class="input-group">
-                                                    <button class="btn btn-outline-secondary" type="button" 
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="quantity-control">
+                                                    <button class="quantity-btn" 
                                                             onclick="updateQuantity(${item.productID}, ${item.quantity - 1}, ${item.stock})">-</button>
-                                                    <input type="number" name="quantity" value="${item.quantity}" 
-                                                           min="1" max="${item.stock}" class="form-control quantity-input" 
-                                                           id="quantity-${item.productID}" readonly>
-                                                    <button class="btn btn-outline-secondary" type="button" 
+                                                    <input type="number" class="quantity-input-cart" 
+                                                           value="${item.quantity}" 
+                                                           min="1" max="${item.stock}"
+                                                           id="quantity-${item.productID}"
+                                                           readonly>
+                                                    <button class="quantity-btn" 
                                                             onclick="updateQuantity(${item.productID}, ${item.quantity + 1}, ${item.stock})">+</button>
                                                 </div>
-                                            </form>
-                                        </div>
-                                        <div class="col-md-2 text-end">
-                                            <p class="mb-2">
-                                                <strong>
+                                            </td>
+                                            <td>
+                                                <div class="price-cart">
                                                     <fmt:formatNumber value="${item.subtotal}" type="currency" 
                                                         currencyCode="VND" currencySymbol="₫" groupingUsed="true"/>
-                                                </strong>
-                                            </p>
-                                            <form method="post" action="${pageContext.request.contextPath}/cart" class="d-inline">
-                                                <input type="hidden" name="action" value="remove">
-                                                <input type="hidden" name="productID" value="${item.productID}">
-                                                <button type="submit" class="btn btn-danger btn-sm" 
-                                                        onclick="return confirm('Bạn có chắc muốn xóa sản phẩm này?')">
-                                                    <i class="bi bi-trash"></i>
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </div>
-                                </div>
-                            </c:forEach>
-                            
-                            <div class="mt-3">
-                                <form method="post" action="${pageContext.request.contextPath}/cart" class="d-inline">
-                                    <input type="hidden" name="action" value="clear">
-                                    <button type="submit" class="btn btn-outline-danger" 
-                                            onclick="return confirm('Bạn có chắc muốn xóa toàn bộ giỏ hàng?')">
-                                        <i class="bi bi-trash"></i> Xóa toàn bộ
-                                    </button>
-                                </form>
-                            </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <form method="post" action="${pageContext.request.contextPath}/cart" class="d-inline">
+                                                    <input type="hidden" name="action" value="remove">
+                                                    <input type="hidden" name="productID" value="${item.productID}">
+                                                    <button type="submit" class="remove-btn" 
+                                                            onclick="return confirm('Bạn có chắc muốn xóa sản phẩm này?')">
+                                                        <i class="bi bi-x-lg"></i>
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    </c:forEach>
+                                </tbody>
+                            </table>
                         </c:when>
                         <c:otherwise>
-                            <div class="text-center py-5">
-                                <i class="bi bi-cart-x" style="font-size: 4rem; color: #ccc;"></i>
-                                <p class="mt-3">Giỏ hàng của bạn đang trống</p>
-                                <a href="${pageContext.request.contextPath}/shop" class="btn btn-primary">
+                            <div class="empty-cart">
+                                <i class="bi bi-cart-x empty-cart-icon"></i>
+                                <h3>Giỏ hàng của bạn đang trống</h3>
+                                <p class="mt-3">Hãy thêm sản phẩm vào giỏ hàng để tiếp tục mua sắm</p>
+                                <a href="${pageContext.request.contextPath}/home" class="btn btn-primary mt-3">
                                     <i class="bi bi-shop"></i> Tiếp tục mua sắm
                                 </a>
                             </div>
@@ -246,41 +422,76 @@
                 </div>
             </div>
             
+            <!-- Summary Panel -->
             <div class="col-lg-4">
-                <div class="summary-card">
-                    <h5 class="mb-3">Tóm tắt đơn hàng</h5>
-                    <hr>
-                    <div class="d-flex justify-content-between mb-3">
-                        <span>Tổng số sản phẩm:</span>
-                        <strong>${cartSize != null ? cartSize : 0}</strong>
+                <div class="summary-panel">
+                    <!-- Xuất hóa đơn -->
+                    <div class="summary-item">
+                        <div class="summary-label">
+                            <i class="bi bi-file-earmark-text"></i>
+                            <span>Xuất hóa đơn</span>
+                        </div>
+                        <a href="#" class="summary-change-link">Thay đổi ></a>
                     </div>
-                    <div class="d-flex justify-content-between mb-3">
-                        <span>Tổng tiền:</span>
-                        <strong class="text-danger" style="font-size: 1.5rem;">
-                            <fmt:formatNumber value="${cartTotal != null ? cartTotal : 0}" type="currency" 
-                                currencyCode="VND" currencySymbol="₫" groupingUsed="true"/>
-                        </strong>
+                    
+                    <!-- Hẹn giờ nhận hàng -->
+                    <div class="summary-item">
+                        <div class="summary-label">
+                            <i class="bi bi-clock"></i>
+                            <span>Hẹn giờ nhận hàng</span>
+                        </div>
+                        <a href="#" class="summary-change-link">Thay đổi ></a>
                     </div>
-                    <hr>
-                    <c:if test="${not empty cartItems && cartItems.size() > 0}">
-                        <button class="btn btn-primary w-100 btn-lg" onclick="checkout()">
-                            <i class="bi bi-credit-card"></i> Thanh toán
+                    
+                    <!-- Ghi chú đơn hàng -->
+                    <div class="summary-item">
+                        <div class="summary-label">
+                            <i class="bi bi-pencil-square"></i>
+                            <span>Ghi chú đơn hàng</span>
+                        </div>
+                        <a href="#" class="summary-change-link">Thay đổi ></a>
+                    </div>
+                    
+                    <!-- Mã giảm giá -->
+                    <div class="summary-item">
+                        <div class="summary-label">
+                            <i class="bi bi-tag"></i>
+                            <span>Mã giảm giá</span>
+                        </div>
+                        <a href="${pageContext.request.contextPath}/checkout" class="summary-change-link">Chọn ></a>
+                    </div>
+                    
+                    <!-- Tổng cộng -->
+                    <div class="total-section">
+                        <div class="total-label">TỔNG CỘNG</div>
+                        <div class="total-amount">
+                            <c:choose>
+                                <c:when test="${not empty sessionScope.cart && !sessionScope.cart.isEmpty()}">
+                                    <fmt:formatNumber value="${sessionScope.cart.total}" type="currency" 
+                                        currencyCode="VND" currencySymbol="₫" groupingUsed="true"/>
+                                </c:when>
+                                <c:otherwise>
+                                    0₫
+                                </c:otherwise>
+                            </c:choose>
+                        </div>
+                        <div class="discount-note">
+                            Nhập mã giảm giá ở trang thanh toán
+                        </div>
+                    </div>
+                    
+                    <!-- Checkout Button -->
+                    <c:if test="${not empty sessionScope.cart && !sessionScope.cart.isEmpty()}">
+                        <button class="checkout-btn" onclick="window.location.href='${pageContext.request.contextPath}/checkout'">
+                            THANH TOÁN <i class="bi bi-arrow-right"></i>
                         </button>
                     </c:if>
-                    <a href="${pageContext.request.contextPath}/shop" class="btn btn-outline-secondary w-100 mt-2">
-                        <i class="bi bi-arrow-left"></i> Tiếp tục mua sắm
-                    </a>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="bg-dark text-white text-center py-4 mt-5">
-        <div class="container">
-            <p class="mb-0">&copy; 2024 SmartShop. All rights reserved.</p>
-        </div>
-    </footer>
+    <jsp:include page="/views/common/footer.jsp" />
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -321,11 +532,6 @@
             document.body.appendChild(form);
             form.submit();
         }
-        
-        function checkout() {
-            window.location.href = '${pageContext.request.contextPath}/checkout';
-        }
     </script>
 </body>
 </html>
-

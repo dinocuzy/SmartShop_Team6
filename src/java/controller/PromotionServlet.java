@@ -29,7 +29,13 @@ public class PromotionServlet extends HttpServlet {
     @Override
     public void init() throws ServletException {
         super.init();
-        promotionService = new PromotionService();
+        try {
+            promotionService = new PromotionService();
+        } catch (Exception e) {
+            System.err.println("Error initializing PromotionServlet: " + e.getMessage());
+            e.printStackTrace();
+            // Không throw exception để tránh context startup failure
+        }
     }
     
     @Override

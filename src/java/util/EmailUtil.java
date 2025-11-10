@@ -16,9 +16,10 @@ public class EmailUtil {
     private static final String SMTP_HOST = "smtp.gmail.com";
     private static final String SMTP_PORT = "587";
     private static final String SMTP_USER = "binh222120@gmail.com"; // Thay bằng email của bạn
-    private static final String SMTP_PASSWORD = "utnv defw hqjt wqnd"; // Thay bằng app password của bạn
-    private static final String FROM_EMAIL = "your-email@gmail.com"; // Email gửi
+    private static final String SMTP_PASSWORD = "utnv   defw hqjt wqnd"; // Thay bằng app password của bạn
+    private static final String FROM_EMAIL = "binh222120@gmail.com"; // Email gửi
     private static final String FROM_NAME = "SmartShop";
+    private static final String CONTACT_EMAIL = "binh222120@gmail.com"; // Email nhận liên hệ
     
     /**
      * Gửi email
@@ -50,8 +51,40 @@ public class EmailUtil {
             
             // Tạo message
             Message message = new MimeMessage(session);
-            message.setFrom(new InternetAddress(FROM_EMAIL, FROM_NAME));
-            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(toEmail));
+            
+            // Set From address với error handling
+            try {
+                InternetAddress fromAddress;
+                if (FROM_NAME != null && !FROM_NAME.trim().isEmpty()) {
+                    // Tạo InternetAddress với display name
+                    fromAddress = new InternetAddress(FROM_EMAIL, FROM_NAME);
+                } else {
+                    fromAddress = new InternetAddress(FROM_EMAIL);
+                }
+                message.setFrom(fromAddress);
+            } catch (Exception fromException) {
+                System.err.println("Error setting From address: " + fromException.getMessage());
+                fromException.printStackTrace();
+                // Fallback: set From without display name
+                try {
+                    message.setFrom(new InternetAddress(FROM_EMAIL));
+                } catch (Exception fallbackException) {
+                    System.err.println("Error setting From address (fallback): " + fallbackException.getMessage());
+                    fallbackException.printStackTrace();
+                    return false;
+                }
+            }
+            
+            // Set recipient
+            try {
+                message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(toEmail));
+            } catch (Exception recipientException) {
+                System.err.println("Error setting recipient: " + recipientException.getMessage());
+                recipientException.printStackTrace();
+                return false;
+            }
+            
+            // Set subject và content
             message.setSubject(subject);
             message.setContent(body, "text/html; charset=utf-8");
             
@@ -61,8 +94,12 @@ public class EmailUtil {
             System.out.println("Email sent successfully to: " + toEmail);
             return true;
             
+        } catch (MessagingException e) {
+            System.err.println("MessagingException sending email to " + toEmail + ": " + e.getMessage());
+            e.printStackTrace();
+            return false;
         } catch (Exception e) {
-            System.err.println("Error sending email to " + toEmail + ": " + e.getMessage());
+            System.err.println("Unexpected error sending email to " + toEmail + ": " + e.getMessage());
             e.printStackTrace();
             return false;
         }

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Redirecting to SmartShop</title>
+    <script>
+        // Redirect to home page (HomeServlet handles both / and /home)
+        // Use absolute path to ensure correct redirect
+        var contextPath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+        if (contextPath === '' || contextPath === '/') {
+            contextPath = '';
+        }
+        window.location.href = contextPath + '/home';
+    </script>
+    <meta http-equiv="refresh" content="0;url=/home">
+</head>
+<body>
+    <p>Redirecting to <a href="/home">SmartShop Home</a>...</p>
+</body>
+</html>
+

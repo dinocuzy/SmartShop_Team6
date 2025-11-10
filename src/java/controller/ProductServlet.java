@@ -38,10 +38,16 @@ public class ProductServlet extends HttpServlet {
     @Override
     public void init() throws ServletException {
         super.init();
-        productService = new ProductService();
-        categoryService = new CategoryService();
-        promotionService = new PromotionService();
-        promotionProductDAO = new PromotionProductDAO();
+        try {
+            productService = new ProductService();
+            categoryService = new CategoryService();
+            promotionService = new PromotionService();
+            promotionProductDAO = new PromotionProductDAO();
+        } catch (Exception e) {
+            System.err.println("Error initializing ProductServlet: " + e.getMessage());
+            e.printStackTrace();
+            // Không throw exception để tránh context startup failure
+        }
     }
     
     @Override

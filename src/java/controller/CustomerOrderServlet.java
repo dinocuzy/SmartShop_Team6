@@ -30,8 +30,14 @@ public class CustomerOrderServlet extends HttpServlet {
     @Override
     public void init() throws ServletException {
         super.init();
-        orderService = new OrderService();
-        orderItemService = new OrderItemService();
+        try {
+            orderService = new OrderService();
+            orderItemService = new OrderItemService();
+        } catch (Exception e) {
+            System.err.println("Error initializing CustomerOrderServlet: " + e.getMessage());
+            e.printStackTrace();
+            // Không throw exception để tránh context startup failure
+        }
     }
     
     @Override

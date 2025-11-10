@@ -21,6 +21,8 @@ DROP TABLE IF EXISTS dbo.OrderStatusHistory;
 GO
 DROP TABLE IF EXISTS dbo.OrderItems;
 GO
+DROP TABLE IF EXISTS dbo.CartItems;
+GO
 DROP TABLE IF EXISTS dbo.Payments;
 GO
 DROP TABLE IF EXISTS dbo.PromotionProducts;
@@ -30,8 +32,6 @@ GO
 DROP TABLE IF EXISTS dbo.ProductViews;
 GO
 DROP TABLE IF EXISTS dbo.SocialShares;
-GO
-DROP TABLE IF EXISTS dbo.UserFavorites;
 GO
 DROP TABLE IF EXISTS dbo.WishlistItems;
 GO
@@ -197,6 +197,19 @@ CREATE TABLE dbo.Orders (
 );
 GO
 
+-- CartItems: Lưu giỏ hàng của người dùng
+CREATE TABLE dbo.CartItems (
+  CartItemID INT IDENTITY(1,1) PRIMARY KEY,
+  UserID INT NOT NULL,
+  ProductID INT NOT NULL,
+  Quantity INT NOT NULL CONSTRAINT DF_CartItems_Quantity DEFAULT 1,
+  AddedDate DATETIME2 NOT NULL CONSTRAINT DF_CartItems_AddedDate DEFAULT SYSDATETIME(),
+  CONSTRAINT FK_CartItems_Users FOREIGN KEY(UserID) REFERENCES dbo.Users(UserID) ON DELETE CASCADE,
+  CONSTRAINT FK_CartItems_Products FOREIGN KEY(ProductID) REFERENCES dbo.Products(ProductID) ON DELETE CASCADE,
+  CONSTRAINT UQ_CartItems_UserProduct UNIQUE(UserID, ProductID) -- Mỗi user chỉ có 1 record cho mỗi product
+);
+GO
+
 -- OrderItems
 CREATE TABLE dbo.OrderItems (
   OrderItemID INT IDENTITY(1,1) PRIMARY KEY,
@@ -358,30 +371,21 @@ CREATE TABLE dbo.SocialShares (
 );
 GO
 
--- UserFavorites
-CREATE TABLE dbo.UserFavorites (
-  FavoriteID INT IDENTITY(1,1) PRIMARY KEY,
-  UserID INT NOT NULL,
-  ProductID INT NOT NULL,
-  CreatedAt DATETIME2 NOT NULL DEFAULT SYSDATETIME(),
-  CONSTRAINT UQ_UserFavorites_User_Product UNIQUE(UserID, ProductID),
-  CONSTRAINT FK_UserFavorites_Users FOREIGN KEY(UserID) REFERENCES dbo.Users(UserID) ON DELETE CASCADE,
-  CONSTRAINT FK_UserFavorites_Products FOREIGN KEY(ProductID) REFERENCES dbo.Products(ProductID) ON DELETE CASCADE
-);
-GO
-
 -- Indexes
 CREATE INDEX IX_Products_Category ON dbo.Products(CategoryID);
 GO
 CREATE INDEX IX_OrderItems_Order ON dbo.OrderItems(OrderID);
+GO
+
+-- Index cho CartItems
+CREATE INDEX IX_CartItems_User ON dbo.CartItems(UserID);
+CREATE INDEX IX_CartItems_Product ON dbo.CartItems(ProductID);
 GO
 CREATE INDEX IX_Payments_Order ON dbo.Payments(OrderID);
 GO
 CREATE INDEX IX_ProductViews_Product ON dbo.ProductViews(ProductID);
 GO
 CREATE INDEX IX_SocialShares_Product ON dbo.SocialShares(ProductID);
-GO
-CREATE INDEX IX_UserFavorites_User ON dbo.UserFavorites(UserID);
 GO
 CREATE INDEX IX_CompareListItems_List ON dbo.CompareListItems(CompareListID);
 GO
@@ -397,7 +401,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.Roles WHERE RoleName=N'Staff') INSERT INTO dbo.
 IF NOT EXISTS (SELECT 1 FROM dbo.Roles WHERE RoleName=N'Customer') INSERT INTO dbo.Roles(RoleName, Description) VALUES (N'Customer', N'Default customer role');
 GO
 -- Users
-IF NOT EXISTS (SELECT 1 FROM dbo.Users WHERE Email=N'admin@smartshop.local') INSERT INTO dbo.Users(FullName, Email, PasswordHash, Phone, RoleID) VALUES (N'Nguyen Van A', N'admin@smartshop.local', N'hash_admin', N'0900000001', 1);
+IF NOT EXISTS (SELECT 1 FROM dbo.Users WHERE Email=N'smartshop686868@gmail.com') INSERT INTO dbo.Users(FullName, Email, PasswordHash, Phone, RoleID) VALUES (N'Admin', N'admin@smartshop.local', N'hash_admin', N'0833347220', 1);
 IF NOT EXISTS (SELECT 1 FROM dbo.Users WHERE Email=N'manager@smartshop.local') INSERT INTO dbo.Users(FullName, Email, PasswordHash, Phone, RoleID) VALUES (N'Tran Thi B', N'manager@smartshop.local', N'hash_manager', N'0900000002', 2);
 IF NOT EXISTS (SELECT 1 FROM dbo.Users WHERE Email=N'staff1@smartshop.local') INSERT INTO dbo.Users(FullName, Email, PasswordHash, Phone, RoleID) VALUES (N'Le Van C', N'staff1@smartshop.local', N'hash_staff1', N'0900000003', 3);
 IF NOT EXISTS (SELECT 1 FROM dbo.Users WHERE Email=N'staff2@smartshop.local') INSERT INTO dbo.Users(FullName, Email, PasswordHash, Phone, RoleID) VALUES (N'Pham Thi D', N'staff2@smartshop.local', N'hash_staff2', N'0900000004', 3);
@@ -408,7 +412,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.Users WHERE Email=N'customer4@mail.local') INSE
 IF NOT EXISTS (SELECT 1 FROM dbo.Users WHERE Email=N'customer5@mail.local') INSERT INTO dbo.Users(FullName, Email, PasswordHash, Phone, RoleID) VALUES (N'Customer 5', N'customer5@mail.local', N'hash_cust5', N'0912300005', 4);
 IF NOT EXISTS (SELECT 1 FROM dbo.Users WHERE Email=N'customer6@mail.local') INSERT INTO dbo.Users(FullName, Email, PasswordHash, Phone, RoleID) VALUES (N'Customer 6', N'customer6@mail.local', N'hash_cust6', N'0912300006', 4);
 IF NOT EXISTS (SELECT 1 FROM dbo.Users WHERE Email=N'customer7@mail.local') INSERT INTO dbo.Users(FullName, Email, PasswordHash, Phone, RoleID) VALUES (N'Customer 7', N'customer7@mail.local', N'hash_cust7', N'0912300007', 4);
-IF NOT EXISTS (SELECT 1 FROM dbo.Users WHERE Email=N'customer8@mail.local') INSERT INTO dbo.Users(FullName, Email, PasswordHash, Phone, RoleID) VALUES (N'Customer 8', N'customer8@mail.local', N'hash_cust8', N'0912300008', 4);
+IF NOT EXISTS (SELECT 1 FROM dbo.Users WHERE Email=N'dinosaurlu11@gmail.com') INSERT INTO dbo.Users(FullName, Email, PasswordHash, Phone, RoleID) VALUES (N'Dino', N'dinosaurlu11@gmail.com', N'hash_dinosaur', N'0912300008', 4);
 GO
 -- OAuth Providers
 IF NOT EXISTS (SELECT 1 FROM dbo.OAuthProviders WHERE ProviderName=N'Google') INSERT INTO dbo.OAuthProviders(ProviderName) VALUES (N'Google');
@@ -434,67 +438,77 @@ IF NOT EXISTS (SELECT 1 FROM dbo.Categories WHERE CategoryName=N'Gaming Gear') I
 IF NOT EXISTS (SELECT 1 FROM dbo.Categories WHERE CategoryName=N'TV & Monitor') INSERT INTO dbo.Categories(CategoryName, Description, ImageUrl) VALUES (N'TV & Monitor', N'Mô tả TV & Monitor', N'/img/tv-&-monitor.jpg');
 IF NOT EXISTS (SELECT 1 FROM dbo.Categories WHERE CategoryName=N'Nhà thông minh') INSERT INTO dbo.Categories(CategoryName, Description, ImageUrl) VALUES (N'Nhà thông minh', N'Mô tả Nhà thông minh', N'/img/nhà-thông-minh.jpg');
 GO
--- Products
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (1, N'Điện thoại mẫu 1', N'điện-thoại-mẫu-1', N'Mô tả Điện thoại mẫu 1', 900.0, N'Đỏ', 68, N'InStock', N'/img/điện-thoại-mẫu-1.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (1, N'Điện thoại mẫu 2', N'điện-thoại-mẫu-2', N'Mô tả Điện thoại mẫu 2', 300.0, N'Đen', 78, N'InStock', N'/img/điện-thoại-mẫu-2.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (1, N'Điện thoại mẫu 3', N'điện-thoại-mẫu-3', N'Mô tả Điện thoại mẫu 3', 340.0, N'Đen', 23, N'InStock', N'/img/điện-thoại-mẫu-3.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (1, N'Điện thoại mẫu 4', N'điện-thoại-mẫu-4', N'Mô tả Điện thoại mẫu 4', 990.0, N'Đỏ', 51, N'InStock', N'/img/điện-thoại-mẫu-4.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (1, N'Điện thoại mẫu 5', N'điện-thoại-mẫu-5', N'Mô tả Điện thoại mẫu 5', 890.0, N'Đỏ', 56, N'InStock', N'/img/điện-thoại-mẫu-5.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (1, N'Điện thoại mẫu 6', N'điện-thoại-mẫu-6', N'Mô tả Điện thoại mẫu 6', 500.0, N'Bạc', 39, N'InStock', N'/img/điện-thoại-mẫu-6.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (2, N'Laptop mẫu 1', N'laptop-mẫu-1', N'Mô tả Laptop mẫu 1', 570.0, N'Trắng', 94, N'InStock', N'/img/laptop-mẫu-1.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (2, N'Laptop mẫu 2', N'laptop-mẫu-2', N'Mô tả Laptop mẫu 2', 710.0, N'Đen', 76, N'InStock', N'/img/laptop-mẫu-2.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (2, N'Laptop mẫu 3', N'laptop-mẫu-3', N'Mô tả Laptop mẫu 3', 1170.0, N'Trắng', 79, N'InStock', N'/img/laptop-mẫu-3.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (2, N'Laptop mẫu 4', N'laptop-mẫu-4', N'Mô tả Laptop mẫu 4', 1110.0, N'Bạc', 85, N'InStock', N'/img/laptop-mẫu-4.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (2, N'Laptop mẫu 5', N'laptop-mẫu-5', N'Mô tả Laptop mẫu 5', 750.0, N'Đen', 20, N'InStock', N'/img/laptop-mẫu-5.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (2, N'Laptop mẫu 6', N'laptop-mẫu-6', N'Mô tả Laptop mẫu 6', 270.0, N'Trắng', 26, N'InStock', N'/img/laptop-mẫu-6.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (3, N'Tablet mẫu 1', N'tablet-mẫu-1', N'Mô tả Tablet mẫu 1', 510.0, N'Đỏ', 36, N'InStock', N'/img/tablet-mẫu-1.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (3, N'Tablet mẫu 2', N'tablet-mẫu-2', N'Mô tả Tablet mẫu 2', 1240.0, N'Bạc', 73, N'InStock', N'/img/tablet-mẫu-2.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (3, N'Tablet mẫu 3', N'tablet-mẫu-3', N'Mô tả Tablet mẫu 3', 900.0, N'Trắng', 63, N'InStock', N'/img/tablet-mẫu-3.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (3, N'Tablet mẫu 4', N'tablet-mẫu-4', N'Mô tả Tablet mẫu 4', 590.0, N'Xanh', 39, N'InStock', N'/img/tablet-mẫu-4.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (3, N'Tablet mẫu 5', N'tablet-mẫu-5', N'Mô tả Tablet mẫu 5', 1050.0, N'Bạc', 73, N'InStock', N'/img/tablet-mẫu-5.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (3, N'Tablet mẫu 6', N'tablet-mẫu-6', N'Mô tả Tablet mẫu 6', 820.0, N'Đen', 19, N'InStock', N'/img/tablet-mẫu-6.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (4, N'Phụ kiện mẫu 1', N'phụ-kiện-mẫu-1', N'Mô tả Phụ kiện mẫu 1', 650.0, N'Xanh', 33, N'InStock', N'/img/phụ-kiện-mẫu-1.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (4, N'Phụ kiện mẫu 2', N'phụ-kiện-mẫu-2', N'Mô tả Phụ kiện mẫu 2', 620.0, N'Đen', 23, N'InStock', N'/img/phụ-kiện-mẫu-2.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (4, N'Phụ kiện mẫu 3', N'phụ-kiện-mẫu-3', N'Mô tả Phụ kiện mẫu 3', 1330.0, N'Xanh', 67, N'InStock', N'/img/phụ-kiện-mẫu-3.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (4, N'Phụ kiện mẫu 4', N'phụ-kiện-mẫu-4', N'Mô tả Phụ kiện mẫu 4', 1230.0, N'Trắng', 35, N'InStock', N'/img/phụ-kiện-mẫu-4.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (4, N'Phụ kiện mẫu 5', N'phụ-kiện-mẫu-5', N'Mô tả Phụ kiện mẫu 5', 410.0, N'Trắng', 81, N'InStock', N'/img/phụ-kiện-mẫu-5.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (4, N'Phụ kiện mẫu 6', N'phụ-kiện-mẫu-6', N'Mô tả Phụ kiện mẫu 6', 750.0, N'Trắng', 91, N'InStock', N'/img/phụ-kiện-mẫu-6.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (5, N'Âm thanh mẫu 1', N'âm-thanh-mẫu-1', N'Mô tả Âm thanh mẫu 1', 550.0, N'Trắng', 18, N'InStock', N'/img/âm-thanh-mẫu-1.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (5, N'Âm thanh mẫu 2', N'âm-thanh-mẫu-2', N'Mô tả Âm thanh mẫu 2', 710.0, N'Xanh', 44, N'InStock', N'/img/âm-thanh-mẫu-2.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (5, N'Âm thanh mẫu 3', N'âm-thanh-mẫu-3', N'Mô tả Âm thanh mẫu 3', 750.0, N'Trắng', 54, N'InStock', N'/img/âm-thanh-mẫu-3.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (5, N'Âm thanh mẫu 4', N'âm-thanh-mẫu-4', N'Mô tả Âm thanh mẫu 4', 1200.0, N'Đen', 92, N'InStock', N'/img/âm-thanh-mẫu-4.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (5, N'Âm thanh mẫu 5', N'âm-thanh-mẫu-5', N'Mô tả Âm thanh mẫu 5', 740.0, N'Đen', 64, N'InStock', N'/img/âm-thanh-mẫu-5.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (5, N'Âm thanh mẫu 6', N'âm-thanh-mẫu-6', N'Mô tả Âm thanh mẫu 6', 920.0, N'Trắng', 73, N'InStock', N'/img/âm-thanh-mẫu-6.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (6, N'Smartwatch mẫu 1', N'smartwatch-mẫu-1', N'Mô tả Smartwatch mẫu 1', 1000.0, N'Đen', 53, N'InStock', N'/img/smartwatch-mẫu-1.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (6, N'Smartwatch mẫu 2', N'smartwatch-mẫu-2', N'Mô tả Smartwatch mẫu 2', 1020.0, N'Đỏ', 29, N'InStock', N'/img/smartwatch-mẫu-2.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (6, N'Smartwatch mẫu 3', N'smartwatch-mẫu-3', N'Mô tả Smartwatch mẫu 3', 1460.0, N'Đỏ', 59, N'InStock', N'/img/smartwatch-mẫu-3.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (6, N'Smartwatch mẫu 4', N'smartwatch-mẫu-4', N'Mô tả Smartwatch mẫu 4', 820.0, N'Đen', 84, N'InStock', N'/img/smartwatch-mẫu-4.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (6, N'Smartwatch mẫu 5', N'smartwatch-mẫu-5', N'Mô tả Smartwatch mẫu 5', 1420.0, N'Xanh', 7, N'InStock', N'/img/smartwatch-mẫu-5.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (6, N'Smartwatch mẫu 6', N'smartwatch-mẫu-6', N'Mô tả Smartwatch mẫu 6', 840.0, N'Bạc', 76, N'InStock', N'/img/smartwatch-mẫu-6.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (7, N'Thiết bị mạng mẫu 1', N'thiết-bị-mạng-mẫu-1', N'Mô tả Thiết bị mạng mẫu 1', 1300.0, N'Đỏ', 23, N'InStock', N'/img/thiết-bị-mạng-mẫu-1.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (7, N'Thiết bị mạng mẫu 2', N'thiết-bị-mạng-mẫu-2', N'Mô tả Thiết bị mạng mẫu 2', 1020.0, N'Xanh', 87, N'InStock', N'/img/thiết-bị-mạng-mẫu-2.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (7, N'Thiết bị mạng mẫu 3', N'thiết-bị-mạng-mẫu-3', N'Mô tả Thiết bị mạng mẫu 3', 890.0, N'Xanh', 68, N'InStock', N'/img/thiết-bị-mạng-mẫu-3.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (7, N'Thiết bị mạng mẫu 4', N'thiết-bị-mạng-mẫu-4', N'Mô tả Thiết bị mạng mẫu 4', 1630.0, N'Đen', 26, N'InStock', N'/img/thiết-bị-mạng-mẫu-4.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (7, N'Thiết bị mạng mẫu 5', N'thiết-bị-mạng-mẫu-5', N'Mô tả Thiết bị mạng mẫu 5', 1070.0, N'Xanh', 20, N'InStock', N'/img/thiết-bị-mạng-mẫu-5.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (7, N'Thiết bị mạng mẫu 6', N'thiết-bị-mạng-mẫu-6', N'Mô tả Thiết bị mạng mẫu 6', 1350.0, N'Trắng', 61, N'InStock', N'/img/thiết-bị-mạng-mẫu-6.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (8, N'Gaming Gear mẫu 1', N'gaming-gear-mẫu-1', N'Mô tả Gaming Gear mẫu 1', 1210.0, N'Đỏ', 68, N'InStock', N'/img/gaming-gear-mẫu-1.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (8, N'Gaming Gear mẫu 2', N'gaming-gear-mẫu-2', N'Mô tả Gaming Gear mẫu 2', 1350.0, N'Đen', 72, N'InStock', N'/img/gaming-gear-mẫu-2.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (8, N'Gaming Gear mẫu 3', N'gaming-gear-mẫu-3', N'Mô tả Gaming Gear mẫu 3', 1040.0, N'Bạc', 37, N'InStock', N'/img/gaming-gear-mẫu-3.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (8, N'Gaming Gear mẫu 4', N'gaming-gear-mẫu-4', N'Mô tả Gaming Gear mẫu 4', 1330.0, N'Bạc', 76, N'InStock', N'/img/gaming-gear-mẫu-4.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (8, N'Gaming Gear mẫu 5', N'gaming-gear-mẫu-5', N'Mô tả Gaming Gear mẫu 5', 950.0, N'Xanh', 86, N'InStock', N'/img/gaming-gear-mẫu-5.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (8, N'Gaming Gear mẫu 6', N'gaming-gear-mẫu-6', N'Mô tả Gaming Gear mẫu 6', 1160.0, N'Trắng', 93, N'InStock', N'/img/gaming-gear-mẫu-6.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (9, N'TV & Monitor mẫu 1', N'tv-&-monitor-mẫu-1', N'Mô tả TV & Monitor mẫu 1', 970.0, N'Bạc', 21, N'InStock', N'/img/tv-&-monitor-mẫu-1.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (9, N'TV & Monitor mẫu 2', N'tv-&-monitor-mẫu-2', N'Mô tả TV & Monitor mẫu 2', 1420.0, N'Đen', 65, N'InStock', N'/img/tv-&-monitor-mẫu-2.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (9, N'TV & Monitor mẫu 3', N'tv-&-monitor-mẫu-3', N'Mô tả TV & Monitor mẫu 3', 1790.0, N'Đen', 34, N'InStock', N'/img/tv-&-monitor-mẫu-3.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (9, N'TV & Monitor mẫu 4', N'tv-&-monitor-mẫu-4', N'Mô tả TV & Monitor mẫu 4', 1680.0, N'Xanh', 7, N'InStock', N'/img/tv-&-monitor-mẫu-4.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (9, N'TV & Monitor mẫu 5', N'tv-&-monitor-mẫu-5', N'Mô tả TV & Monitor mẫu 5', 1100.0, N'Đen', 80, N'InStock', N'/img/tv-&-monitor-mẫu-5.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (9, N'TV & Monitor mẫu 6', N'tv-&-monitor-mẫu-6', N'Mô tả TV & Monitor mẫu 6', 1420.0, N'Trắng', 36, N'InStock', N'/img/tv-&-monitor-mẫu-6.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (10, N'Nhà thông minh mẫu 1', N'nhà-thông-minh-mẫu-1', N'Mô tả Nhà thông minh mẫu 1', 1730.0, N'Trắng', 31, N'InStock', N'/img/nhà-thông-minh-mẫu-1.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (10, N'Nhà thông minh mẫu 2', N'nhà-thông-minh-mẫu-2', N'Mô tả Nhà thông minh mẫu 2', 1220.0, N'Trắng', 53, N'InStock', N'/img/nhà-thông-minh-mẫu-2.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (10, N'Nhà thông minh mẫu 3', N'nhà-thông-minh-mẫu-3', N'Mô tả Nhà thông minh mẫu 3', 1590.0, N'Đỏ', 22, N'InStock', N'/img/nhà-thông-minh-mẫu-3.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (10, N'Nhà thông minh mẫu 4', N'nhà-thông-minh-mẫu-4', N'Mô tả Nhà thông minh mẫu 4', 1090.0, N'Trắng', 12, N'InStock', N'/img/nhà-thông-minh-mẫu-4.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (10, N'Nhà thông minh mẫu 5', N'nhà-thông-minh-mẫu-5', N'Mô tả Nhà thông minh mẫu 5', 1760.0, N'Xanh', 29, N'InStock', N'/img/nhà-thông-minh-mẫu-5.jpg');
-INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (10, N'Nhà thông minh mẫu 6', N'nhà-thông-minh-mẫu-6', N'Mô tả Nhà thông minh mẫu 6', 1730.0, N'Xanh', 18, N'InStock', N'/img/nhà-thông-minh-mẫu-6.jpg');
+-- Products - Real Products with Real Image URLs
+-- Category 1: Điện thoại (Smartphones)
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl, IsSpecial) VALUES (1, N'iPhone 15 Pro Max 256GB', N'iphone-15-pro-max-256gb', N'iPhone 15 Pro Max với chip A17 Pro, màn hình 6.7 inch Super Retina XDR, camera 48MP, pin khủng', 28990000, N'Xanh Titan', 68, N'InStock', N'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=500', 1);
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl, IsSpecial) VALUES (1, N'Samsung Galaxy S24 Ultra 512GB', N'samsung-galaxy-s24-ultra-512gb', N'Galaxy S24 Ultra với S Pen, camera 200MP, chip Snapdragon 8 Gen 3, màn hình Dynamic AMOLED 2X 6.8 inch', 26990000, N'Đen Titan', 78, N'InStock', N'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500', 1);
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (1, N'Xiaomi 14 Pro 256GB', N'xiaomi-14-pro-256gb', N'Xiaomi 14 Pro với chip Snapdragon 8 Gen 3, camera Leica 50MP, màn hình AMOLED 6.73 inch, sạc nhanh 120W', 19990000, N'Đen', 23, N'InStock', N'https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (1, N'OPPO Find X7 Ultra 512GB', N'oppo-find-x7-ultra-512gb', N'OPPO Find X7 Ultra với camera 50MP Hasselblad, chip Snapdragon 8 Gen 3, màn hình LTPO AMOLED 6.82 inch', 24990000, N'Xanh', 51, N'InStock', N'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (1, N'vivo X100 Pro 512GB', N'vivo-x100-pro-512gb', N'vivo X100 Pro với camera ZEISS 50MP, chip MediaTek Dimensity 9300, màn hình AMOLED 6.78 inch', 22990000, N'Xanh', 56, N'InStock', N'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (1, N'iPhone 14 128GB', N'iphone-14-128gb', N'iPhone 14 với chip A15 Bionic, camera kép 12MP, màn hình Super Retina XDR 6.1 inch', 18990000, N'Tím', 39, N'InStock', N'https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=500');
+-- Category 2: Laptop
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl, IsSpecial) VALUES (2, N'MacBook Pro 14 inch M3 Pro 512GB', N'macbook-pro-14-m3-pro-512gb', N'MacBook Pro 14 inch với chip Apple M3 Pro, RAM 18GB, SSD 512GB, màn hình Liquid Retina XDR', 54900000, N'Xám Space', 94, N'InStock', N'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500', 1);
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (2, N'ASUS ROG Strix G16 2024', N'asus-rog-strix-g16-2024', N'Laptop gaming ASUS ROG Strix G16 với CPU Intel Core i9-14900HX, GPU RTX 4070, RAM 16GB, SSD 1TB', 42900000, N'Đen', 76, N'InStock', N'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (2, N'Dell XPS 15 9530', N'dell-xps-15-9530', N'Dell XPS 15 với CPU Intel Core i7-13700H, GPU RTX 4050, RAM 16GB, SSD 512GB, màn hình 15.6 inch OLED', 47900000, N'Bạc', 79, N'InStock', N'https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (2, N'HP Spectre x360 14', N'hp-spectre-x360-14', N'HP Spectre x360 14 với CPU Intel Core i7-1355U, RAM 16GB, SSD 1TB, màn hình OLED 14 inch touchscreen', 39900000, N'Xanh Navy', 85, N'InStock', N'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (2, N'Lenovo ThinkPad X1 Carbon Gen 11', N'lenovo-thinkpad-x1-carbon-gen11', N'ThinkPad X1 Carbon với CPU Intel Core i7-1355U, RAM 16GB, SSD 512GB, màn hình 14 inch 2.8K', 38900000, N'Đen', 20, N'InStock', N'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (2, N'ASUS Zenbook 14 OLED', N'asus-zenbook-14-oled', N'ASUS Zenbook 14 với CPU AMD Ryzen 7 7735U, RAM 16GB, SSD 512GB, màn hình OLED 14 inch 2.8K', 24900000, N'Xanh', 26, N'InStock', N'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500');
+-- Category 3: Tablet
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl, IsSpecial) VALUES (3, N'iPad Pro 12.9 inch M2 256GB', N'ipad-pro-12.9-m2-256gb', N'iPad Pro 12.9 inch với chip Apple M2, RAM 8GB, màn hình Liquid Retina XDR, hỗ trợ Apple Pencil 2', 29900000, N'Xám Space', 36, N'InStock', N'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=500', 1);
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (3, N'Samsung Galaxy Tab S9 Ultra 512GB', N'samsung-galaxy-tab-s9-ultra-512gb', N'Galaxy Tab S9 Ultra với chip Snapdragon 8 Gen 2, RAM 12GB, màn hình Dynamic AMOLED 2X 14.6 inch', 28900000, N'Bạc', 73, N'InStock', N'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (3, N'iPad Air 11 inch M2 256GB', N'ipad-air-11-m2-256gb', N'iPad Air 11 inch với chip Apple M2, RAM 8GB, màn hình Liquid Retina, hỗ trợ Apple Pencil 2', 19900000, N'Tím', 63, N'InStock', N'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (3, N'Xiaomi Pad 6 Pro 256GB', N'xiaomi-pad-6-pro-256gb', N'Xiaomi Pad 6 Pro với chip Snapdragon 8+ Gen 1, RAM 12GB, màn hình LCD 11 inch 2.8K 144Hz', 12900000, N'Xanh', 39, N'InStock', N'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (3, N'Lenovo Tab P12 Pro', N'lenovo-tab-p12-pro', N'Lenovo Tab P12 Pro với chip Snapdragon 870, RAM 8GB, màn hình OLED 12.6 inch, hỗ trợ bút cảm ứng', 15900000, N'Xám', 73, N'InStock', N'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (3, N'Samsung Galaxy Tab S9 FE+', N'samsung-galaxy-tab-s9-fe-plus', N'Galaxy Tab S9 FE+ với chip Exynos 1380, RAM 8GB, màn hình LCD 12.4 inch, hỗ trợ S Pen', 13900000, N'Đen', 19, N'InStock', N'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=500');
+-- Category 4: Phụ kiện
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (4, N'Logitech MX Master 3S', N'logitech-mx-master-3s', N'Chuột không dây Logitech MX Master 3S với sensor 8K DPI, pin sạc, kết nối Bluetooth và USB receiver', 2590000, N'Xám', 33, N'InStock', N'https://images.unsplash.com/photo-1527814050087-3793815479db?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (4, N'Apple Magic Keyboard', N'apple-magic-keyboard', N'Bàn phím không dây Apple Magic Keyboard với pin sạc, kết nối Bluetooth, thiết kế siêu mỏng', 3290000, N'Trắng', 23, N'InStock', N'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (4, N'Anker Power Bank 20000mAh', N'anker-power-bank-20000mah', N'Sạc dự phòng Anker PowerCore 20000mAh với sạc nhanh 20W, 2 cổng USB-A và 1 cổng USB-C', 1290000, N'Đen', 67, N'InStock', N'https://images.unsplash.com/photo-1609091839311-d5365f9ff1c7?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (4, N'Spigen iPhone 15 Pro Case', N'spigen-iphone-15-pro-case', N'Ốp lưng Spigen cho iPhone 15 Pro với bảo vệ chống sốc, thiết kế trong suốt, hỗ trợ MagSafe', 890000, N'Trong suốt', 35, N'InStock', N'https://images.unsplash.com/photo-1556656793-08538906a9f8?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (4, N'Belkin BoostCharge Pro 3-in-1', N'belkin-boostcharge-pro-3in1', N'Đế sạc không dây Belkin BoostCharge Pro 3-in-1 cho iPhone, AirPods và Apple Watch', 5990000, N'Trắng', 81, N'InStock', N'https://images.unsplash.com/photo-1609091839311-d5365f9ff1c7?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (4, N'HyperX Cloud Alpha Wireless', N'hyperx-cloud-alpha-wireless', N'Tai nghe gaming HyperX Cloud Alpha Wireless với pin 300 giờ, âm thanh DTS, micrô rời', 4990000, N'Đỏ Đen', 91, N'InStock', N'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500');
+-- Category 5: Âm thanh
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl, IsSpecial) VALUES (5, N'Sony WH-1000XM5', N'sony-wh-1000xm5', N'Tai nghe chống ồn Sony WH-1000XM5 với công nghệ ANC, pin 30 giờ, sạc nhanh 3 phút = 3 giờ', 8990000, N'Đen', 18, N'InStock', N'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500', 1);
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (5, N'AirPods Pro 2 USB-C', N'airpods-pro-2-usb-c', N'AirPods Pro 2 với chip H2, chống ồn chủ động, pin 6 giờ + 24 giờ với hộp sạc, cổng USB-C', 6990000, N'Trắng', 44, N'InStock', N'https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (5, N'JBL Flip 6', N'jbl-flip-6', N'Loa Bluetooth JBL Flip 6 với công suất 30W, chống nước IPX7, pin 12 giờ, âm bass mạnh', 3990000, N'Xanh', 54, N'InStock', N'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (5, N'Soundcore Liberty 4 NC', N'soundcore-liberty-4-nc', N'Tai nghe true wireless Soundcore Liberty 4 NC với ANC, pin 10 giờ + 50 giờ với hộp sạc', 3490000, N'Đen', 92, N'InStock', N'https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (5, N'Samsung Galaxy Buds2 Pro', N'samsung-galaxy-buds2-pro', N'Galaxy Buds2 Pro với ANC thông minh, pin 8 giờ + 29 giờ, âm thanh 360 Audio, chống nước IPX7', 4490000, N'Tím', 64, N'InStock', N'https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (5, N'Bose QuietComfort Earbuds II', N'bose-quietcomfort-earbuds-ii', N'Bose QuietComfort Earbuds II với ANC tùy chỉnh, pin 6 giờ + 18 giờ, âm thanh sống động', 7990000, N'Trắng', 73, N'InStock', N'https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb?w=500');
+-- Category 6: Smartwatch
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl, IsSpecial) VALUES (6, N'Apple Watch Ultra 2', N'apple-watch-ultra-2', N'Apple Watch Ultra 2 với chip S9 SiP, màn hình 49mm, pin 36 giờ, chống nước 100m, GPS kép', 19900000, N'Cam Titan', 53, N'InStock', N'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500', 1);
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (6, N'Samsung Galaxy Watch6 Classic', N'samsung-galaxy-watch6-classic', N'Galaxy Watch6 Classic với màn hình 47mm, vòng bezel xoay, pin 40 giờ, đo huyết áp và ECG', 8990000, N'Đen', 29, N'InStock', N'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (6, N'Garmin Forerunner 965', N'garmin-forerunner-965', N'Garmin Forerunner 965 với màn hình AMOLED 1.4 inch, pin 23 ngày, GPS chính xác, đo VO2 max', 12900000, N'Đen', 59, N'InStock', N'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (6, N'Apple Watch Series 9 GPS', N'apple-watch-series-9-gps', N'Apple Watch Series 9 với chip S9 SiP, màn hình 45mm, pin 18 giờ, đo SpO2 và ECG', 12900000, N'Hồng', 84, N'InStock', N'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (6, N'Xiaomi Watch S3', N'xiaomi-watch-s3', N'Xiaomi Watch S3 với màn hình AMOLED 1.43 inch, pin 15 ngày, hơn 150 chế độ thể thao', 3490000, N'Đen', 7, N'InStock', N'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (6, N'Huawei Watch GT 4', N'huawei-watch-gt-4', N'Huawei Watch GT 4 với màn hình AMOLED 1.43 inch, pin 14 ngày, hơn 100 chế độ thể thao, đo SpO2', 5990000, N'Bạc', 76, N'InStock', N'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500');
+-- Category 7: Thiết bị mạng
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (7, N'TP-Link Archer AX6000', N'tp-link-archer-ax6000', N'Router Wi-Fi 6 TP-Link Archer AX6000 với tốc độ 5952 Mbps, 8 ăng-ten, hỗ trợ MU-MIMO', 4990000, N'Đen', 23, N'InStock', N'https://images.unsplash.com/photo-1609081219090-a6d81d3085bf?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (7, N'ASUS RT-AX86U Pro', N'asus-rt-ax86u-pro', N'Router gaming ASUS RT-AX86U Pro với Wi-Fi 6, tốc độ 5700 Mbps, hỗ trợ AiMesh, Game Boost', 5990000, N'Đen', 87, N'InStock', N'https://images.unsplash.com/photo-1609081219090-a6d81d3085bf?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (7, N'Ubiquiti UniFi Dream Machine', N'ubiquiti-unifi-dream-machine', N'Ubiquiti UniFi Dream Machine với bộ điều khiển UniFi, router, switch và gateway tích hợp', 8990000, N'Trắng', 68, N'InStock', N'https://images.unsplash.com/photo-1609081219090-a6d81d3085bf?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (7, N'Netgear Nighthawk RAX50', N'netgear-nighthawk-rax50', N'Router Wi-Fi 6 Netgear Nighthawk RAX50 với tốc độ 5400 Mbps, hỗ trợ OFDMA và MU-MIMO', 5490000, N'Đen', 26, N'InStock', N'https://images.unsplash.com/photo-1609081219090-a6d81d3085bf?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (7, N'Linksys Velop MX4200', N'linksys-velop-mx4200', N'Hệ thống mesh Wi-Fi 6 Linksys Velop MX4200 với 3 node, phủ sóng lên tới 6000 sq ft', 7990000, N'Trắng', 20, N'InStock', N'https://images.unsplash.com/photo-1609081219090-a6d81d3085bf?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (7, N'Google Nest Wifi Pro', N'google-nest-wifi-pro', N'Router mesh Wi-Fi 6E Google Nest Wifi Pro với 3 node, hỗ trợ Matter và Thread', 8990000, N'Trắng', 61, N'InStock', N'https://images.unsplash.com/photo-1609081219090-a6d81d3085bf?w=500');
+-- Category 8: Gaming Gear
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl, IsSpecial) VALUES (8, N'Razer DeathAdder V3 Pro', N'razer-deathadder-v3-pro', N'Chuột gaming không dây Razer DeathAdder V3 Pro với sensor Focus Pro 30K, pin 90 giờ', 3990000, N'Đen', 68, N'InStock', N'https://images.unsplash.com/photo-1527814050087-3793815479db?w=500', 1);
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (8, N'Corsair K70 RGB TKL', N'corsair-k70-rgb-tkl', N'Bàn phím gaming cơ Corsair K70 RGB TKL với switch Cherry MX, đèn RGB, thiết kế TKL', 4490000, N'Đen', 72, N'InStock', N'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (8, N'SteelSeries Arctis Nova Pro Wireless', N'steelseries-arctis-nova-pro-wireless', N'Tai nghe gaming SteelSeries Arctis Nova Pro Wireless với ANC, pin 44 giờ, base station', 8990000, N'Đen', 37, N'InStock', N'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (8, N'Logitech G Pro X Superlight 2', N'logitech-g-pro-x-superlight-2', N'Chuột gaming siêu nhẹ Logitech G Pro X Superlight 2 với sensor HERO 2, chỉ 60g', 3490000, N'Trắng', 76, N'InStock', N'https://images.unsplash.com/photo-1527814050087-3793815479db?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (8, N'HyperX Alloy Elite 2', N'hyperx-alloy-elite-2', N'Bàn phím gaming HyperX Alloy Elite 2 với switch HyperX Red, đèn RGB, volume wheel', 3290000, N'Đen', 86, N'InStock', N'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (8, N'ASUS ROG Strix Scope II 96', N'asus-rog-strix-scope-ii-96', N'Bàn phím gaming ASUS ROG Strix Scope II 96 với switch ROG NX, layout 96%, đèn RGB', 4990000, N'Đen', 93, N'InStock', N'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500');
+-- Category 9: TV & Monitor
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl, IsSpecial) VALUES (9, N'Samsung 55 inch QLED 4K Q80C', N'samsung-55-qled-4k-q80c', N'TV Samsung 55 inch QLED 4K Q80C với Quantum HDR, Smart TV Tizen, hỗ trợ HDR10+', 19900000, N'Đen', 21, N'InStock', N'https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=500', 1);
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (9, N'LG 65 inch OLED 4K C3', N'lg-65-oled-4k-c3', N'TV LG 65 inch OLED 4K C3 với công nghệ OLED, hỗ trợ Dolby Vision và Dolby Atmos', 34900000, N'Đen', 65, N'InStock', N'https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (9, N'ASUS ROG Swift PG32UCDM', N'asus-rog-swift-pg32ucdm', N'Màn hình gaming ASUS ROG Swift PG32UCDM 32 inch 4K OLED 240Hz, G-Sync, HDR10', 24900000, N'Đen', 34, N'InStock', N'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (9, N'Dell UltraSharp U3223QE', N'dell-ultrasharp-u3223qe', N'Màn hình Dell UltraSharp U3223QE 32 inch 4K IPS, USB-C 90W, sRGB 99%, thiết kế văn phòng', 14900000, N'Đen', 7, N'InStock', N'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (9, N'Samsung Odyssey G9 49 inch', N'samsung-odyssey-g9-49inch', N'Màn hình cong gaming Samsung Odyssey G9 49 inch QLED 240Hz, G-Sync, HDR1000', 22900000, N'Xanh', 80, N'InStock', N'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (9, N'LG UltraGear 27GR95QE', N'lg-ultragear-27gr95qe', N'Màn hình gaming LG UltraGear 27GR95QE 27 inch QHD OLED 240Hz, G-Sync, HDR10', 17900000, N'Đen', 36, N'InStock', N'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500');
+-- Category 10: Nhà thông minh
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (10, N'Google Nest Hub Max', N'google-nest-hub-max', N'Màn hình thông minh Google Nest Hub Max 10 inch, camera, điều khiển nhà thông minh', 8990000, N'Trắng', 31, N'InStock', N'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (10, N'Ring Video Doorbell Pro 2', N'ring-video-doorbell-pro-2', N'Chuông cửa thông minh Ring Video Doorbell Pro 2 với camera 1536p, night vision, hai chiều', 7990000, N'Đen', 53, N'InStock', N'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (10, N'Philips Hue Starter Kit', N'philips-hue-starter-kit', N'Bộ đèn thông minh Philips Hue Starter Kit với 3 bóng đèn màu, hub, điều khiển qua app', 3990000, N'Trắng', 22, N'InStock', N'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (10, N'Amazon Echo Dot 5th Gen', N'amazon-echo-dot-5th-gen', N'Loa thông minh Amazon Echo Dot 5th Gen với Alexa, điều khiển nhà thông minh', 1990000, N'Xanh', 12, N'InStock', N'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (10, N'Xiaomi Smart Camera C300', N'xiaomi-smart-camera-c300', N'Camera an ninh Xiaomi Smart Camera C300 với độ phân giải 2K, night vision, phát hiện chuyển động', 1290000, N'Trắng', 29, N'InStock', N'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=500');
+INSERT INTO dbo.Products(CategoryID, ProductName, Slug, Description, Price, Color, Stock, StockStatus, ImageUrl) VALUES (10, N'Aqara Smart Home Hub M2', N'aqara-smart-home-hub-m2', N'Bộ điều khiển trung tâm Aqara Smart Home Hub M2 với hỗ trợ Zigbee 3.0, Matter, HomeKit', 1990000, N'Trắng', 18, N'InStock', N'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=500');
 GO
 -- Promotions
 INSERT INTO dbo.Promotions(Title, Description, DiscountPercent, StartDate, EndDate, IsActive) VALUES (N'Discount 30%', N'Khuyến mãi 30%', 30, DATEADD(DAY,-7, SYSDATETIME()), DATEADD(DAY,30, SYSDATETIME()), 1);
@@ -539,112 +553,6 @@ IF NOT EXISTS (SELECT 1 FROM dbo.PromotionProducts WHERE PromotionID=5 AND Produ
 IF NOT EXISTS (SELECT 1 FROM dbo.PromotionProducts WHERE PromotionID=5 AND ProductID=28) INSERT INTO dbo.PromotionProducts(PromotionID, ProductID) VALUES (5, 28);
 IF NOT EXISTS (SELECT 1 FROM dbo.PromotionProducts WHERE PromotionID=5 AND ProductID=29) INSERT INTO dbo.PromotionProducts(PromotionID, ProductID) VALUES (5, 29);
 IF NOT EXISTS (SELECT 1 FROM dbo.PromotionProducts WHERE PromotionID=5 AND ProductID=30) INSERT INTO dbo.PromotionProducts(PromotionID, ProductID) VALUES (5, 30);
-GO
--- Orders
-INSERT INTO dbo.Orders(UserID, BillingAddressID, ShippingAddressID, OrderStatus, TotalAmount) VALUES (6, NULL, NULL, N'Pending', 0);
-INSERT INTO dbo.Orders(UserID, BillingAddressID, ShippingAddressID, OrderStatus, TotalAmount) VALUES (3, NULL, NULL, N'Pending', 0);
-INSERT INTO dbo.Orders(UserID, BillingAddressID, ShippingAddressID, OrderStatus, TotalAmount) VALUES (10, NULL, NULL, N'Pending', 0);
-INSERT INTO dbo.Orders(UserID, BillingAddressID, ShippingAddressID, OrderStatus, TotalAmount) VALUES (9, NULL, NULL, N'Pending', 0);
-INSERT INTO dbo.Orders(UserID, BillingAddressID, ShippingAddressID, OrderStatus, TotalAmount) VALUES (6, NULL, NULL, N'Pending', 0);
-INSERT INTO dbo.Orders(UserID, BillingAddressID, ShippingAddressID, OrderStatus, TotalAmount) VALUES (3, NULL, NULL, N'Pending', 0);
-INSERT INTO dbo.Orders(UserID, BillingAddressID, ShippingAddressID, OrderStatus, TotalAmount) VALUES (9, NULL, NULL, N'Pending', 0);
-INSERT INTO dbo.Orders(UserID, BillingAddressID, ShippingAddressID, OrderStatus, TotalAmount) VALUES (9, NULL, NULL, N'Pending', 0);
-INSERT INTO dbo.Orders(UserID, BillingAddressID, ShippingAddressID, OrderStatus, TotalAmount) VALUES (3, NULL, NULL, N'Pending', 0);
-INSERT INTO dbo.Orders(UserID, BillingAddressID, ShippingAddressID, OrderStatus, TotalAmount) VALUES (7, NULL, NULL, N'Pending', 0);
-INSERT INTO dbo.Orders(UserID, BillingAddressID, ShippingAddressID, OrderStatus, TotalAmount) VALUES (9, NULL, NULL, N'Pending', 0);
-INSERT INTO dbo.Orders(UserID, BillingAddressID, ShippingAddressID, OrderStatus, TotalAmount) VALUES (8, NULL, NULL, N'Pending', 0);
-INSERT INTO dbo.Orders(UserID, BillingAddressID, ShippingAddressID, OrderStatus, TotalAmount) VALUES (7, NULL, NULL, N'Pending', 0);
-INSERT INTO dbo.Orders(UserID, BillingAddressID, ShippingAddressID, OrderStatus, TotalAmount) VALUES (10, NULL, NULL, N'Pending', 0);
-INSERT INTO dbo.Orders(UserID, BillingAddressID, ShippingAddressID, OrderStatus, TotalAmount) VALUES (7, NULL, NULL, N'Pending', 0);
-GO
--- OrderItems + Update Totals
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (1, 52, 1, 1053);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (1, 7, 3, 1295);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (1, 47, 1, 1478);
-UPDATE o SET TotalAmount = (SELECT SUM(Quantity*UnitPrice) FROM dbo.OrderItems WHERE OrderID=1) FROM dbo.Orders o WHERE o.OrderID=1;
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (2, 46, 3, 724);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (2, 8, 1, 964);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (2, 39, 1, 613);
-UPDATE o SET TotalAmount = (SELECT SUM(Quantity*UnitPrice) FROM dbo.OrderItems WHERE OrderID=2) FROM dbo.Orders o WHERE o.OrderID=2;
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (3, 41, 2, 299);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (3, 17, 1, 761);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (3, 7, 3, 668);
-UPDATE o SET TotalAmount = (SELECT SUM(Quantity*UnitPrice) FROM dbo.OrderItems WHERE OrderID=3) FROM dbo.Orders o WHERE o.OrderID=3;
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (4, 7, 2, 1171);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (4, 33, 3, 1108);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (4, 7, 3, 460);
-UPDATE o SET TotalAmount = (SELECT SUM(Quantity*UnitPrice) FROM dbo.OrderItems WHERE OrderID=4) FROM dbo.Orders o WHERE o.OrderID=4;
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (5, 58, 2, 1141);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (5, 20, 1, 1221);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (5, 14, 3, 617);
-UPDATE o SET TotalAmount = (SELECT SUM(Quantity*UnitPrice) FROM dbo.OrderItems WHERE OrderID=5) FROM dbo.Orders o WHERE o.OrderID=5;
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (6, 31, 2, 1422);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (6, 16, 1, 1081);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (6, 16, 2, 785);
-UPDATE o SET TotalAmount = (SELECT SUM(Quantity*UnitPrice) FROM dbo.OrderItems WHERE OrderID=6) FROM dbo.Orders o WHERE o.OrderID=6;
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (7, 12, 1, 262);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (7, 22, 3, 1252);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (7, 26, 3, 686);
-UPDATE o SET TotalAmount = (SELECT SUM(Quantity*UnitPrice) FROM dbo.OrderItems WHERE OrderID=7) FROM dbo.Orders o WHERE o.OrderID=7;
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (8, 48, 2, 1208);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (8, 53, 3, 695);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (8, 15, 2, 1005);
-UPDATE o SET TotalAmount = (SELECT SUM(Quantity*UnitPrice) FROM dbo.OrderItems WHERE OrderID=8) FROM dbo.Orders o WHERE o.OrderID=8;
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (9, 21, 3, 1208);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (9, 17, 3, 1078);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (9, 53, 3, 1000);
-UPDATE o SET TotalAmount = (SELECT SUM(Quantity*UnitPrice) FROM dbo.OrderItems WHERE OrderID=9) FROM dbo.Orders o WHERE o.OrderID=9;
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (10, 25, 3, 803);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (10, 31, 3, 1469);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (10, 33, 2, 647);
-UPDATE o SET TotalAmount = (SELECT SUM(Quantity*UnitPrice) FROM dbo.OrderItems WHERE OrderID=10) FROM dbo.Orders o WHERE o.OrderID=10;
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (11, 34, 2, 1181);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (11, 45, 1, 1120);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (11, 37, 3, 1309);
-UPDATE o SET TotalAmount = (SELECT SUM(Quantity*UnitPrice) FROM dbo.OrderItems WHERE OrderID=11) FROM dbo.Orders o WHERE o.OrderID=11;
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (12, 47, 2, 1270);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (12, 56, 3, 970);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (12, 41, 3, 674);
-UPDATE o SET TotalAmount = (SELECT SUM(Quantity*UnitPrice) FROM dbo.OrderItems WHERE OrderID=12) FROM dbo.Orders o WHERE o.OrderID=12;
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (13, 59, 1, 1200);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (13, 33, 1, 869);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (13, 44, 3, 862);
-UPDATE o SET TotalAmount = (SELECT SUM(Quantity*UnitPrice) FROM dbo.OrderItems WHERE OrderID=13) FROM dbo.Orders o WHERE o.OrderID=13;
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (14, 35, 3, 278);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (14, 9, 2, 503);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (14, 17, 1, 1124);
-UPDATE o SET TotalAmount = (SELECT SUM(Quantity*UnitPrice) FROM dbo.OrderItems WHERE OrderID=14) FROM dbo.Orders o WHERE o.OrderID=14;
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (15, 15, 2, 488);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (15, 46, 1, 1467);
-INSERT INTO dbo.OrderItems(OrderID, ProductID, Quantity, UnitPrice) VALUES (15, 15, 2, 699);
-UPDATE o SET TotalAmount = (SELECT SUM(Quantity*UnitPrice) FROM dbo.OrderItems WHERE OrderID=15) FROM dbo.Orders o WHERE o.OrderID=15;
-GO
--- Payments
-INSERT INTO dbo.Payments(OrderID, PaymentMethodID, Amount, PaymentStatus) SELECT 1, 2, TotalAmount, N'Paid' FROM dbo.Orders WHERE OrderID=1;
-INSERT INTO dbo.Payments(OrderID, PaymentMethodID, Amount, PaymentStatus) SELECT 3, 3, TotalAmount, N'Paid' FROM dbo.Orders WHERE OrderID=3;
-INSERT INTO dbo.Payments(OrderID, PaymentMethodID, Amount, PaymentStatus) SELECT 5, 4, TotalAmount, N'Paid' FROM dbo.Orders WHERE OrderID=5;
-INSERT INTO dbo.Payments(OrderID, PaymentMethodID, Amount, PaymentStatus) SELECT 7, 3, TotalAmount, N'Paid' FROM dbo.Orders WHERE OrderID=7;
-INSERT INTO dbo.Payments(OrderID, PaymentMethodID, Amount, PaymentStatus) SELECT 9, 2, TotalAmount, N'Paid' FROM dbo.Orders WHERE OrderID=9;
-INSERT INTO dbo.Payments(OrderID, PaymentMethodID, Amount, PaymentStatus) SELECT 11, 3, TotalAmount, N'Paid' FROM dbo.Orders WHERE OrderID=11;
-INSERT INTO dbo.Payments(OrderID, PaymentMethodID, Amount, PaymentStatus) SELECT 13, 4, TotalAmount, N'Paid' FROM dbo.Orders WHERE OrderID=13;
-INSERT INTO dbo.Payments(OrderID, PaymentMethodID, Amount, PaymentStatus) SELECT 15, 1, TotalAmount, N'Paid' FROM dbo.Orders WHERE OrderID=15;
-GO
--- OrderStatusHistory
-INSERT INTO dbo.OrderStatusHistory(OrderID, OldStatus, NewStatus) VALUES (1, N'Pending', N'Processing');
-INSERT INTO dbo.OrderStatusHistory(OrderID, OldStatus, NewStatus) VALUES (2, N'Pending', N'Processing');
-INSERT INTO dbo.OrderStatusHistory(OrderID, OldStatus, NewStatus) VALUES (3, N'Pending', N'Processing');
-INSERT INTO dbo.OrderStatusHistory(OrderID, OldStatus, NewStatus) VALUES (4, N'Pending', N'Processing');
-INSERT INTO dbo.OrderStatusHistory(OrderID, OldStatus, NewStatus) VALUES (5, N'Pending', N'Processing');
-INSERT INTO dbo.OrderStatusHistory(OrderID, OldStatus, NewStatus) VALUES (6, N'Pending', N'Processing');
-INSERT INTO dbo.OrderStatusHistory(OrderID, OldStatus, NewStatus) VALUES (7, N'Pending', N'Processing');
-INSERT INTO dbo.OrderStatusHistory(OrderID, OldStatus, NewStatus) VALUES (8, N'Pending', N'Processing');
-INSERT INTO dbo.OrderStatusHistory(OrderID, OldStatus, NewStatus) VALUES (9, N'Pending', N'Processing');
-INSERT INTO dbo.OrderStatusHistory(OrderID, OldStatus, NewStatus) VALUES (10, N'Pending', N'Processing');
-INSERT INTO dbo.OrderStatusHistory(OrderID, OldStatus, NewStatus) VALUES (11, N'Pending', N'Processing');
-INSERT INTO dbo.OrderStatusHistory(OrderID, OldStatus, NewStatus) VALUES (12, N'Pending', N'Processing');
-INSERT INTO dbo.OrderStatusHistory(OrderID, OldStatus, NewStatus) VALUES (13, N'Pending', N'Processing');
-INSERT INTO dbo.OrderStatusHistory(OrderID, OldStatus, NewStatus) VALUES (14, N'Pending', N'Processing');
-INSERT INTO dbo.OrderStatusHistory(OrderID, OldStatus, NewStatus) VALUES (15, N'Pending', N'Processing');
 GO
 -- Wishlists + Items
 IF NOT EXISTS (SELECT 1 FROM dbo.Wishlists WHERE UserID=5) INSERT INTO dbo.Wishlists(UserID) VALUES(5);
@@ -709,7 +617,7 @@ IF NOT EXISTS (SELECT 1 FROM dbo.NewsletterSubscriptions WHERE Email=N'user8@mai
 IF NOT EXISTS (SELECT 1 FROM dbo.NewsletterSubscriptions WHERE Email=N'user9@mail.local') INSERT INTO dbo.NewsletterSubscriptions(Email) VALUES (N'user9@mail.local');
 IF NOT EXISTS (SELECT 1 FROM dbo.NewsletterSubscriptions WHERE Email=N'user10@mail.local') INSERT INTO dbo.NewsletterSubscriptions(Email) VALUES (N'user10@mail.local');
 GO
--- ProductViews / SocialShares / UserFavorites
+-- ProductViews / SocialShares
 INSERT INTO dbo.ProductViews(ProductID, UserID) VALUES (56, 9);
 INSERT INTO dbo.ProductViews(ProductID, UserID) VALUES (15, 9);
 INSERT INTO dbo.ProductViews(ProductID, UserID) VALUES (41, 10);
@@ -960,36 +868,6 @@ INSERT INTO dbo.SocialShares(ProductID, UserID, Platform) VALUES (37, 9, N'Faceb
 INSERT INTO dbo.SocialShares(ProductID, UserID, Platform) VALUES (21, 4, N'Twitter');
 INSERT INTO dbo.SocialShares(ProductID, UserID, Platform) VALUES (20, 10, N'Twitter');
 INSERT INTO dbo.SocialShares(ProductID, UserID, Platform) VALUES (50, 4, N'Zalo');
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=3 AND ProductID=45) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (3, 45);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=5 AND ProductID=14) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (5, 14);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=9 AND ProductID=41) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (9, 41);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=4 AND ProductID=8) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (4, 8);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=5 AND ProductID=22) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (5, 22);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=8 AND ProductID=27) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (8, 27);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=6 AND ProductID=35) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (6, 35);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=7 AND ProductID=24) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (7, 24);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=10 AND ProductID=23) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (10, 23);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=6 AND ProductID=56) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (6, 56);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=4 AND ProductID=57) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (4, 57);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=6 AND ProductID=52) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (6, 52);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=6 AND ProductID=20) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (6, 20);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=8 AND ProductID=15) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (8, 15);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=8 AND ProductID=45) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (8, 45);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=8 AND ProductID=7) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (8, 7);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=8 AND ProductID=40) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (8, 40);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=10 AND ProductID=4) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (10, 4);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=7 AND ProductID=33) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (7, 33);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=9 AND ProductID=29) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (9, 29);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=3 AND ProductID=46) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (3, 46);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=10 AND ProductID=49) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (10, 49);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=4 AND ProductID=51) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (4, 51);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=10 AND ProductID=40) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (10, 40);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=4 AND ProductID=43) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (4, 43);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=9 AND ProductID=49) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (9, 49);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=5 AND ProductID=47) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (5, 47);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=4 AND ProductID=13) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (4, 13);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=10 AND ProductID=25) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (10, 25);
-IF NOT EXISTS (SELECT 1 FROM dbo.UserFavorites WHERE UserID=3 AND ProductID=3) INSERT INTO dbo.UserFavorites(UserID, ProductID) VALUES (3, 3);
 GO
 -- Thêm địa chỉ mẫu cho một số user
 INSERT INTO dbo.Addresses(UserID, FullName, Phone, Line1, City, Country, IsDefault) 

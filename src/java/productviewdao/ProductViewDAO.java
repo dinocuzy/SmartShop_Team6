@@ -1,6 +1,8 @@
 package productviewdao;
 
+import model.Product;
 import model.ProductView;
+import productdao.ProductDAO;
 import util.DBConnection;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -8,7 +10,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 /**
  * Implementation của IProductViewDAO
@@ -94,6 +98,152 @@ public class ProductViewDAO implements IProductViewDAO {
         }
         
         return null;
+    }
+    
+    @Override
+    public List<Product> getMostViewedProducts(int limit) {
+        List<Product> products = new ArrayList<>();
+        String sql = "SELECT TOP (?) p.ProductID, p.CategoryID, p.ProductName, p.Slug, p.Description, " +
+                     "p.Price, p.Size, p.Color, p.IsSpecial, p.Stock, p.StockStatus, p.ImageUrl, " +
+                     "p.CreatedAt, p.UpdatedAt, COUNT(pv.ViewID) as ViewCount " +
+                     "FROM Products p " +
+                     "INNER JOIN ProductViews pv ON p.ProductID = pv.ProductID " +
+                     "WHERE p.StockStatus = 'InStock' " +
+                     "GROUP BY p.ProductID, p.CategoryID, p.ProductName, p.Slug, p.Description, " +
+                     "p.Price, p.Size, p.Color, p.IsSpecial, p.Stock, p.StockStatus, p.ImageUrl, " +
+                     "p.CreatedAt, p.UpdatedAt " +
+                     "ORDER BY ViewCount DESC, p.ProductID ASC";
+        
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            
+            ps.setInt(1, limit);
+            
+            try (ResultSet rs = ps.executeQuery()) {
+                ProductDAO productDAO = new ProductDAO();
+                while (rs.next()) {
+                    Product product = productDAO.getById(rs.getInt("ProductID"));
+                    if (product != null) {
+                        products.add(product);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting most viewed products: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
+        return products;
+    }
+    
+    @Override
+    public List<Product> getRecommendedProductsByUserViews(Integer userID, int limit) {
+        List<Product> products = new ArrayList<>();
+        
+        if (userID == null) {
+            // Nếu anonymous, trả về sản phẩm được xem nhiều nhất
+            return getMostViewedProducts(limit);
+        }
+        
+        // Lấy các sản phẩm mà user đã xem, sau đó lấy các sản phẩm cùng category
+        String sql = "SELECT DISTINCT TOP (?) p.ProductID, p.CategoryID, p.ProductName, p.Slug, p.Description, " +
+                     "p.Price, p.Size, p.Color, p.IsSpecial, p.Stock, p.StockStatus, p.ImageUrl, " +
+                     "p.CreatedAt, p.UpdatedAt " +
+                     "FROM Products p " +
+                     "INNER JOIN ProductViews pv ON p.ProductID = pv.ProductID " +
+                     "WHERE p.StockStatus = 'InStock' " +
+                     "AND p.CategoryID IN ( " +
+                     "    SELECT DISTINCT p2.CategoryID " +
+                     "    FROM Products p2 " +
+                     "    INNER JOIN ProductViews pv2 ON p2.ProductID = pv2.ProductID " +
+                     "    WHERE pv2.UserID = ? " +
+                     "    AND p2.StockStatus = 'InStock' " +
+                     ") " +
+                     "AND p.ProductID NOT IN ( " +
+                     "    SELECT DISTINCT ProductID FROM ProductViews WHERE UserID = ? " +
+                     ") " +
+                     "GROUP BY p.ProductID, p.CategoryID, p.ProductName, p.Slug, p.Description, " +
+                     "p.Price, p.Size, p.Color, p.IsSpecial, p.Stock, p.StockStatus, p.ImageUrl, " +
+                     "p.CreatedAt, p.UpdatedAt " +
+                     "ORDER BY COUNT(pv.ViewID) DESC, p.ProductID ASC";
+        
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            
+            ps.setInt(1, limit);
+            ps.setInt(2, userID);
+            ps.setInt(3, userID);
+            
+            try (ResultSet rs = ps.executeQuery()) {
+                ProductDAO productDAO = new ProductDAO();
+                while (rs.next()) {
+                    Product product = productDAO.getById(rs.getInt("ProductID"));
+                    if (product != null) {
+                        products.add(product);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting recommended products by user views: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
+        // Nếu không đủ, bổ sung bằng sản phẩm được xem nhiều nhất
+        if (products.size() < limit) {
+            List<Product> mostViewed = getMostViewedProducts(limit);
+            for (Product product : mostViewed) {
+                boolean exists = false;
+                for (Product p : products) {
+                    if (p.getProductID() == product.getProductID()) {
+                        exists = true;
+                        break;
+                    }
+                }
+                if (!exists && products.size() < limit) {
+                    products.add(product);
+                }
+            }
+        }
+        
+        return products;
+    }
+    
+    @Override
+    public List<Product> getRecommendedProductsByCategory(int categoryID, int excludeProductID, int limit) {
+        List<Product> products = new ArrayList<>();
+        String sql = "SELECT TOP (?) p.ProductID, p.CategoryID, p.ProductName, p.Slug, p.Description, " +
+                     "p.Price, p.Size, p.Color, p.IsSpecial, p.Stock, p.StockStatus, p.ImageUrl, " +
+                     "p.CreatedAt, p.UpdatedAt, COUNT(pv.ViewID) as ViewCount " +
+                     "FROM Products p " +
+                     "LEFT JOIN ProductViews pv ON p.ProductID = pv.ProductID " +
+                     "WHERE p.CategoryID = ? AND p.ProductID != ? AND p.StockStatus = 'InStock' " +
+                     "GROUP BY p.ProductID, p.CategoryID, p.ProductName, p.Slug, p.Description, " +
+                     "p.Price, p.Size, p.Color, p.IsSpecial, p.Stock, p.StockStatus, p.ImageUrl, " +
+                     "p.CreatedAt, p.UpdatedAt " +
+                     "ORDER BY ViewCount DESC, p.ProductID ASC";
+        
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            
+            ps.setInt(1, limit);
+            ps.setInt(2, categoryID);
+            ps.setInt(3, excludeProductID);
+            
+            try (ResultSet rs = ps.executeQuery()) {
+                ProductDAO productDAO = new ProductDAO();
+                while (rs.next()) {
+                    Product product = productDAO.getById(rs.getInt("ProductID"));
+                    if (product != null) {
+                        products.add(product);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting recommended products by category: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
+        return products;
     }
     
     /**

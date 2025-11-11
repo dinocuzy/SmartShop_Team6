@@ -212,9 +212,9 @@
                 // Hiển thị loading
                 const loadingId = addLoadingMessage();
                 
-                // Gửi request đến OpenAI API
+                // Gửi request đến Chatbot API
                 const contextPath = '${pageContext.request.contextPath}';
-                fetch(contextPath + '/api/openai/chat', {
+                fetch(contextPath + '/api/chatbot', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -762,8 +762,8 @@
             // Hiển thị loading
             const loadingId = addLoadingMessage();
             
-            // Gửi request đến OpenAI API
-            fetch('${pageContext.request.contextPath}/api/openai/chat', {
+                // Gửi request đến Chatbot API
+                fetch('${pageContext.request.contextPath}/api/chatbot', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -772,7 +772,7 @@
                         message: message,
                         conversationId: chatbotConversationId
                     })
-            })
+                })
             .then(response => response.json())
             .then(data => {
                 // Xóa loading message

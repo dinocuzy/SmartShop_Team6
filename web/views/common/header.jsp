@@ -10,7 +10,12 @@
         border-bottom: 2px solid #8b5cf6;
         padding: 1rem 0;
         position: relative;
-        z-index: 1050; /* Cao hơn chatbot để click được vào dropdown */
+        z-index: 1080; /* Thấp hơn navbar-top (1081) một chút để navbar-top dropdown có thể hiển thị trên header */
+    }
+    
+    /* Đảm bảo các dropdown trong header có z-index cao hơn header container */
+    .header-custom .dropdown {
+        z-index: 1090 !important; /* Cao hơn header (1080) để dropdown trong header không bị che bởi các phần tử khác trong header */
     }
     
     .logo-container {
@@ -135,6 +140,7 @@
     
     .dropdown {
         position: relative !important; /* Đảm bảo dropdown có position relative */
+        z-index: 1090 !important; /* Đảm bảo dropdown container có z-index cao hơn header và navbar-top */
     }
     
     .action-item {
@@ -194,15 +200,17 @@
         right: 0 !important;
         left: auto !important;
         margin: 0 !important;
-        z-index: 9999 !important; /* Rất cao để hiển thị trên tất cả */
+        z-index: 1100 !important; /* Rất cao để đảm bảo hiển thị trên tất cả các dropdown khác */
         display: none !important; /* Ẩn mặc định */
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-        opacity: 1 !important;
+        opacity: 0 !important;
         visibility: hidden !important;
         pointer-events: none !important;
         /* Disable Bootstrap Popper positioning */
-        transform: none !important;
+        transform: translateY(-10px) !important;
         inset: auto !important;
+        transition: opacity 0.5s ease, visibility 0.5s ease, transform 0.5s ease !important;
+        will-change: opacity, transform; /* Tối ưu performance cho animation */
     }
     
     .user-dropdown-menu.show {
@@ -210,7 +218,7 @@
         opacity: 1 !important;
         visibility: visible !important;
         pointer-events: auto !important;
-        transform: none !important; /* Override Bootstrap Popper transform */
+        transform: translateY(0) !important; /* Override Bootstrap Popper transform */
         inset: auto !important; /* Override Bootstrap Popper inset */
         top: calc(100% + 0.5rem) !important;
         right: 0 !important;
@@ -515,20 +523,29 @@
                     return;
                 }
                 
-                // Click bên ngoài dropdown, đóng tất cả
+                // Click bên ngoài dropdown, đóng tất cả với delay nhẹ để UX tốt hơn
                 const openMenus = document.querySelectorAll('.dropdown-menu.show');
                 if (openMenus.length > 0) {
                     console.log('Closing dropdowns - clicked outside');
-                    openMenus.forEach(function(menu) {
-                        menu.classList.remove('show');
-                        const parentDropdown = menu.closest('.dropdown');
-                        if (parentDropdown) {
-                            const toggle = parentDropdown.querySelector('[data-bs-toggle="dropdown"]');
-                            if (toggle) {
-                                toggle.setAttribute('aria-expanded', 'false');
+                    // Thêm delay nhỏ trước khi đóng để người dùng có thời gian nhìn thấy
+                    setTimeout(function() {
+                        openMenus.forEach(function(menu) {
+                            menu.classList.remove('show');
+                            // Đợi animation kết thúc trước khi ẩn hoàn toàn
+                            setTimeout(function() {
+                                if (!menu.classList.contains('show')) {
+                                    menu.style.display = 'none';
+                                }
+                            }, 500); // Đợi transition 0.5s
+                            const parentDropdown = menu.closest('.dropdown');
+                            if (parentDropdown) {
+                                const toggle = parentDropdown.querySelector('[data-bs-toggle="dropdown"]');
+                                if (toggle) {
+                                    toggle.setAttribute('aria-expanded', 'false');
+                                }
                             }
-                        }
-                    });
+                        });
+                    }, 100); // Delay 100ms trước khi bắt đầu đóng
                 }
             }, true); // Use capture phase để chạy sau
         }, 1000);

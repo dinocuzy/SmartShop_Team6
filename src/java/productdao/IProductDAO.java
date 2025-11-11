@@ -82,4 +82,13 @@ public interface IProductDAO {
      * @return Tổng số products
      */
     int count(String searchKeyword, int categoryID, boolean includeInactive);
+    
+    /**
+     * Tìm kiếm product theo ProductName, Description (và Brand nếu có)
+     * Sử dụng cho chatbot
+     * @param keyword Từ khóa tìm kiếm
+     * @param includeInactive Nếu true, lấy cả sản phẩm inactive
+     * @return Danh sách Product khớp
+     */
+    List<Product> searchForChatbot(String keyword, boolean includeInactive);
 }

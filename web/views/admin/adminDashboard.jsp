@@ -9,6 +9,7 @@
     <title>Admin Dashboard - SmartShop</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         :root {
             --sidebar-width: 250px;
@@ -232,6 +233,9 @@
             <a href="${pageContext.request.contextPath}/admin/notifications?action=list" class="menu-item">
                 <i class="bi bi-bell"></i> Thông báo
             </a>
+            <a href="${pageContext.request.contextPath}/admin/analytics" class="menu-item">
+                <i class="bi bi-graph-up"></i> Analytics
+            </a>
             <hr style="border-color: rgba(255,255,255,0.2); margin: 1rem 1.5rem;">
             <a href="${pageContext.request.contextPath}/logout" class="menu-item">
                 <i class="bi bi-box-arrow-right"></i> Đăng xuất
@@ -429,6 +433,75 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Analytics Section -->
+        <div class="row g-4 mt-2">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 pb-0 d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-graph-up"></i> Analytics & Báo cáo</h5>
+                        <a href="${pageContext.request.contextPath}/admin/analytics" class="btn btn-sm btn-primary">
+                            <i class="bi bi-arrow-right"></i> Xem chi tiết
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        <div id="analyticsLoading" class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2 text-muted">Đang tải dữ liệu analytics...</p>
+                        </div>
+                        <div id="analyticsContent" style="display: none;">
+                            <div class="row g-4 mb-4">
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="text-center p-3 bg-primary bg-opacity-10 rounded">
+                                        <i class="bi bi-currency-dollar fs-1 text-primary mb-2"></i>
+                                        <h4 class="mb-1" id="analyticsRevenue">0 ₫</h4>
+                                        <small class="text-muted">Tổng Doanh Thu</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="text-center p-3 bg-info bg-opacity-10 rounded">
+                                        <i class="bi bi-cart-check fs-1 text-info mb-2"></i>
+                                        <h4 class="mb-1" id="analyticsOrders">0</h4>
+                                        <small class="text-muted">Tổng Đơn Hàng</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="text-center p-3 bg-success bg-opacity-10 rounded">
+                                        <i class="bi bi-eye fs-1 text-success mb-2"></i>
+                                        <h4 class="mb-1" id="analyticsViews">0</h4>
+                                        <small class="text-muted">Tổng Lượt Xem</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 col-sm-6">
+                                    <div class="text-center p-3 bg-warning bg-opacity-10 rounded">
+                                        <i class="bi bi-calculator fs-1 text-warning mb-2"></i>
+                                        <h4 class="mb-1" id="analyticsAvg">0 ₫</h4>
+                                        <small class="text-muted">TB Doanh Thu/Đơn</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Mini Chart -->
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="chart-container-mini" style="position: relative; height: 250px;">
+                                        <canvas id="analyticsMiniChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- AI Comment Preview -->
+                            <div class="mt-4 p-3 bg-light rounded">
+                                <h6><i class="bi bi-robot"></i> Nhận xét AI (30 ngày gần nhất)</h6>
+                                <p class="mb-0 mt-2" id="analyticsComment" style="font-size: 0.9rem;"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -463,6 +536,137 @@
             } else {
                 item.classList.remove('active');
             }
+        });
+        
+        // Load Analytics Data
+        let analyticsChart = null;
+        
+        function loadAnalyticsSummary() {
+            // Tính toán 30 ngày gần nhất
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(endDate.getDate() - 30);
+            
+            const startDateStr = formatDate(startDate);
+            const endDateStr = formatDate(endDate);
+            
+            const url = '${pageContext.request.contextPath}/api/analytics?startDate=' + startDateStr + '&endDate=' + endDateStr;
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('analyticsLoading').style.display = 'none';
+                    document.getElementById('analyticsContent').style.display = 'block';
+                    
+                    if (data.success) {
+                        // Update statistics
+                        document.getElementById('analyticsRevenue').textContent = formatPrice(parseFloat(data.totalRevenue));
+                        document.getElementById('analyticsOrders').textContent = data.totalOrders;
+                        document.getElementById('analyticsViews').textContent = data.totalViews;
+                        document.getElementById('analyticsAvg').textContent = formatPrice(parseFloat(data.avgRevenuePerOrder));
+                        
+                        // Update AI comment (chỉ hiển thị 150 ký tự đầu)
+                        let comment = data.comment || 'Chưa có nhận xét';
+                        if (comment.length > 150) {
+                            comment = comment.substring(0, 150) + '...';
+                        }
+                        document.getElementById('analyticsComment').textContent = comment;
+                        
+                        // Create mini chart
+                        createMiniChart(data);
+                    } else {
+                        document.getElementById('analyticsContent').innerHTML = 
+                            '<div class="alert alert-warning">Không thể tải dữ liệu analytics: ' + (data.error || 'Lỗi không xác định') + '</div>';
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('analyticsLoading').style.display = 'none';
+                    document.getElementById('analyticsContent').innerHTML = 
+                        '<div class="alert alert-danger">Đã xảy ra lỗi khi tải dữ liệu analytics: ' + error.message + '</div>';
+                });
+        }
+        
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
+        function formatPrice(amount) {
+            return new Intl.NumberFormat('vi-VN').format(amount) + ' ₫';
+        }
+        
+        function createMiniChart(data) {
+            const ctx = document.getElementById('analyticsMiniChart');
+            if (!ctx) return;
+            
+            if (analyticsChart) {
+                analyticsChart.destroy();
+            }
+            
+            // Chuẩn bị dữ liệu cho biểu đồ (7 ngày gần nhất)
+            const revenueData = data.revenueByDate || [];
+            const ordersData = data.ordersByDate || [];
+            
+            // Lấy 7 ngày gần nhất
+            const last7Days = revenueData.slice(-7);
+            const labels = last7Days.map(item => {
+                const date = new Date(item.date);
+                return date.getDate() + '/' + (date.getMonth() + 1);
+            });
+            
+            const revenueValues = last7Days.map(item => parseFloat(item.revenue));
+            
+            analyticsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Doanh Thu (₫)',
+                        data: revenueValues,
+                        borderColor: 'rgb(102, 126, 234)',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Doanh Thu: ' + formatPrice(context.parsed.y);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    if (value >= 1000000) {
+                                        return (value / 1000000).toFixed(1) + 'M ₫';
+                                    }
+                                    return formatPrice(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Load analytics when page loads
+        window.addEventListener('DOMContentLoaded', function() {
+            loadAnalyticsSummary();
         });
     </script>
 </body>

@@ -7,6 +7,8 @@
         color: white;
         padding: 0.5rem 0;
         font-size: 0.9rem;
+        position: relative;
+        z-index: 1081; /* Cao hơn header (1080) một chút để dropdown có thể hiển thị trên header */
     }
     
     .navbar-top .container {
@@ -44,6 +46,7 @@
     
     .navbar-top-dropdown {
         position: relative;
+        z-index: 1095 !important; /* Đảm bảo dropdown container có z-index cao hơn header */
     }
     
     .navbar-top-dropdown-toggle {
@@ -54,21 +57,39 @@
     }
     
     .navbar-top-dropdown-menu {
-        display: none;
+        opacity: 0;
+        visibility: hidden;
         position: absolute;
         top: 100%;
         left: 0;
         background-color: white;
         min-width: 200px;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        z-index: 1000;
+        z-index: 1095 !important; /* Cao hơn header (1080) để hiển thị trên header */
         margin-top: 0.5rem;
         border-radius: 4px;
         padding: 0.5rem 0;
+        transition: opacity 0.5s ease, visibility 0.5s ease, transform 0.5s ease;
+        will-change: opacity, transform; /* Tối ưu performance cho animation */
+        transform: translateY(-10px);
+        pointer-events: none;
+        display: block; /* Luôn có display block để transition hoạt động */
     }
     
+    /* Khi hover hoặc có class show - dùng JavaScript để control */
+    .navbar-top-dropdown-menu.show {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+        pointer-events: auto;
+    }
+    
+    /* Fallback cho CSS hover nếu JavaScript chưa load */
     .navbar-top-dropdown:hover .navbar-top-dropdown-menu {
-        display: block;
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+        pointer-events: auto;
     }
     
     .navbar-top-dropdown-item {
@@ -239,5 +260,74 @@
             navLeft.scrollBy({ left: 200, behavior: 'smooth' });
         }
     }
+    
+    // Thêm delay trước khi đóng dropdown khi mouse rời khỏi - thời gian lâu hơn
+    (function() {
+        // Đợi DOM load xong
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initDropdownDelays);
+        } else {
+            initDropdownDelays();
+        }
+        
+        function initDropdownDelays() {
+            let closeTimeouts = new Map(); // Dùng Map để lưu timeout cho mỗi dropdown
+            const dropdowns = document.querySelectorAll('.navbar-top-dropdown');
+            
+            dropdowns.forEach(function(dropdown) {
+                const menu = dropdown.querySelector('.navbar-top-dropdown-menu');
+                if (!menu) return;
+                
+                // Đảm bảo menu có display block để transition hoạt động
+                menu.style.display = 'block';
+                
+                // Khi hover vào dropdown
+                dropdown.addEventListener('mouseenter', function(e) {
+                    // Hủy timeout đóng nếu có
+                    const timeout = closeTimeouts.get(dropdown);
+                    if (timeout) {
+                        clearTimeout(timeout);
+                        closeTimeouts.delete(dropdown);
+                    }
+                    // Hiển thị dropdown với animation
+                    menu.classList.add('show');
+                });
+                
+                // Khi rời khỏi dropdown
+                dropdown.addEventListener('mouseleave', function(e) {
+                    // Đợi 700ms trước khi đóng (thời gian lâu hơn để người dùng có thời gian di chuyển vào menu)
+                    const timeout = setTimeout(function() {
+                        // Kiểm tra lại xem có đang hover vào dropdown hoặc menu không
+                        if (!dropdown.matches(':hover') && !menu.matches(':hover')) {
+                            menu.classList.remove('show');
+                        }
+                        closeTimeouts.delete(dropdown);
+                    }, 700); // Delay 700ms trước khi bắt đầu đóng - lâu hơn
+                    closeTimeouts.set(dropdown, timeout);
+                });
+                
+                // Khi hover vào menu - giữ menu mở
+                menu.addEventListener('mouseenter', function(e) {
+                    const timeout = closeTimeouts.get(dropdown);
+                    if (timeout) {
+                        clearTimeout(timeout);
+                        closeTimeouts.delete(dropdown);
+                    }
+                    menu.classList.add('show');
+                });
+                
+                // Khi rời khỏi menu
+                menu.addEventListener('mouseleave', function(e) {
+                    const timeout = setTimeout(function() {
+                        if (!dropdown.matches(':hover') && !menu.matches(':hover')) {
+                            menu.classList.remove('show');
+                        }
+                        closeTimeouts.delete(dropdown);
+                    }, 700); // Delay 700ms - lâu hơn
+                    closeTimeouts.set(dropdown, timeout);
+                });
+            });
+        }
+    })();
 </script>
 

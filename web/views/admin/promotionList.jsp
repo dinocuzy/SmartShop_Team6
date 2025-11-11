@@ -210,12 +210,14 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="modalStartDate" class="form-label">Ngày bắt đầu <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control" id="modalStartDate" name="startDate" required>
+                                <input type="date" class="form-control" id="modalStartDate" name="startDate" required onchange="validatePromotionDates()">
+                                <small class="form-text text-danger" id="startDateError" style="display: none;">Ngày bắt đầu phải trước ngày kết thúc</small>
                             </div>
                             
                             <div class="col-md-6 mb-3">
                                 <label for="modalEndDate" class="form-label">Ngày kết thúc <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control" id="modalEndDate" name="endDate" required>
+                                <input type="date" class="form-control" id="modalEndDate" name="endDate" required onchange="validatePromotionDates()">
+                                <small class="form-text text-danger" id="endDateError" style="display: none;">Ngày kết thúc phải sau ngày bắt đầu</small>
                             </div>
                         </div>
                         
@@ -313,6 +315,63 @@
             }
         }
 
+        // Validate ngày khuyến mãi: ngày bắt đầu phải trước ngày kết thúc
+        function validatePromotionDates() {
+            const startDateInput = document.getElementById('modalStartDate');
+            const endDateInput = document.getElementById('modalEndDate');
+            const startDateError = document.getElementById('startDateError');
+            const endDateError = document.getElementById('endDateError');
+            
+            if (!startDateInput || !endDateInput) return;
+            
+            const startDate = startDateInput.value;
+            const endDate = endDateInput.value;
+            
+            // Ẩn các thông báo lỗi trước
+            if (startDateError) startDateError.style.display = 'none';
+            if (endDateError) endDateError.style.display = 'none';
+            
+            // Xóa class invalid nếu có
+            startDateInput.classList.remove('is-invalid');
+            endDateInput.classList.remove('is-invalid');
+            
+            // Kiểm tra nếu cả hai ngày đều có giá trị
+            if (startDate && endDate) {
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                
+                // Ngày bắt đầu phải trước ngày kết thúc
+                if (start >= end) {
+                    if (startDateError) {
+                        startDateError.style.display = 'block';
+                        startDateInput.classList.add('is-invalid');
+                    }
+                    if (endDateError) {
+                        endDateError.style.display = 'block';
+                        endDateInput.classList.add('is-invalid');
+                    }
+                    return false;
+                }
+            }
+            
+            return true;
+        }
+        
+        // Validate trước khi submit form
+        document.addEventListener('DOMContentLoaded', function() {
+            const promotionForm = document.getElementById('promotionForm');
+            if (promotionForm) {
+                promotionForm.addEventListener('submit', function(e) {
+                    if (!validatePromotionDates()) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        alert('Ngày bắt đầu phải trước ngày kết thúc!');
+                        return false;
+                    }
+                });
+            }
+        });
+        
         setTimeout(function() {
             const alerts = document.querySelectorAll('.alert');
             alerts.forEach(function(alert) {

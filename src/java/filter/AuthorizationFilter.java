@@ -61,6 +61,12 @@ public class AuthorizationFilter implements Filter {
             String contextPath = httpRequest.getContextPath();
             String path = requestURI.substring(contextPath.length());
             
+            // Bỏ qua static resources (images, css, js, fonts, etc.)
+            if (isStaticResource(path)) {
+                chain.doFilter(request, response);
+                return;
+            }
+            
             System.out.println("AuthorizationFilter: Checking access for path: " + path);
             
             // Kiểm tra nếu là URL công khai
@@ -162,5 +168,32 @@ public class AuthorizationFilter implements Filter {
             }
         }
         return false;
+    }
+    
+    /**
+     * Kiểm tra xem path có phải là static resource không
+     * @param path Đường dẫn URL
+     * @return true nếu là static resource
+     */
+    private boolean isStaticResource(String path) {
+        // Kiểm tra các extension của static resources
+        String lowerPath = path.toLowerCase();
+        return lowerPath.startsWith("/images/") ||
+               lowerPath.startsWith("/css/") ||
+               lowerPath.startsWith("/js/") ||
+               lowerPath.startsWith("/assets/") ||
+               lowerPath.startsWith("/fonts/") ||
+               lowerPath.endsWith(".css") ||
+               lowerPath.endsWith(".js") ||
+               lowerPath.endsWith(".png") ||
+               lowerPath.endsWith(".jpg") ||
+               lowerPath.endsWith(".jpeg") ||
+               lowerPath.endsWith(".gif") ||
+               lowerPath.endsWith(".svg") ||
+               lowerPath.endsWith(".ico") ||
+               lowerPath.endsWith(".woff") ||
+               lowerPath.endsWith(".woff2") ||
+               lowerPath.endsWith(".ttf") ||
+               lowerPath.endsWith(".eot");
     }
 }

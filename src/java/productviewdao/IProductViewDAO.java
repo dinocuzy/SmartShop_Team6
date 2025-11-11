@@ -1,6 +1,8 @@
 package productviewdao;
 
+import model.Product;
 import model.ProductView;
+import java.util.List;
 
 /**
  * Interface định nghĩa các thao tác với bảng ProductViews
@@ -27,5 +29,29 @@ public interface IProductViewDAO {
      * @return ProductView object hoặc null
      */
     ProductView getById(int viewID);
+    
+    /**
+     * Lấy danh sách sản phẩm được xem nhiều nhất
+     * @param limit Số lượng sản phẩm cần lấy
+     * @return Danh sách Product
+     */
+    List<Product> getMostViewedProducts(int limit);
+    
+    /**
+     * Lấy danh sách sản phẩm gợi ý dựa trên lượt xem của user
+     * @param userID ID của user (null nếu anonymous)
+     * @param limit Số lượng sản phẩm cần lấy
+     * @return Danh sách Product
+     */
+    List<Product> getRecommendedProductsByUserViews(Integer userID, int limit);
+    
+    /**
+     * Lấy danh sách sản phẩm cùng category với sản phẩm đã xem nhiều
+     * @param categoryID ID của category
+     * @param excludeProductID ID sản phẩm cần loại trừ
+     * @param limit Số lượng sản phẩm cần lấy
+     * @return Danh sách Product
+     */
+    List<Product> getRecommendedProductsByCategory(int categoryID, int excludeProductID, int limit);
 }
 

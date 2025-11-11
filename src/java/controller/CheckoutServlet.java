@@ -103,14 +103,17 @@ public class CheckoutServlet extends HttpServlet {
             List<String> outOfStockProducts = new ArrayList<>();
             for (CartItem item : cart.getItems()) {
                 Product product = productService.getProductById(item.getProductID());
-                if (product == null || product.getStock() < item.getQuantity()
-                        || !"InStock".equals(product.getStockStatus())) {
-                    outOfStockProducts.add(item.getProductName());
+                if (product == null) {
+                    outOfStockProducts.add(item.getProductName() + " (không tồn tại)");
+                } else if (item.getQuantity() > product.getStock()) {
+                    outOfStockProducts.add(item.getProductName() + " (yêu cầu: " + item.getQuantity() + ", có: " + product.getStock() + ")");
+                } else if (!"InStock".equals(product.getStockStatus())) {
+                    outOfStockProducts.add(item.getProductName() + " (hết hàng)");
                 }
             }
 
             if (!outOfStockProducts.isEmpty()) {
-                request.setAttribute("errorMessage", "Một số sản phẩm không còn đủ hàng: " + String.join(", ", outOfStockProducts));
+                request.setAttribute("errorMessage", "Một số sản phẩm không đủ hàng: " + String.join(", ", outOfStockProducts));
                 response.sendRedirect(request.getContextPath() + "/cart");
                 return;
             }
@@ -218,9 +221,20 @@ public class CheckoutServlet extends HttpServlet {
             // Validate lại sản phẩm trong giỏ hàng
             for (CartItem item : cart.getItems()) {
                 Product product = productService.getProductById(item.getProductID());
-                if (product == null || product.getStock() < item.getQuantity()
-                        || !"InStock".equals(product.getStockStatus())) {
-                    request.setAttribute("errorMessage", "Sản phẩm " + item.getProductName() + " không còn đủ hàng");
+                if (product == null) {
+                    request.setAttribute("errorMessage", "Sản phẩm " + item.getProductName() + " không tồn tại");
+                    doGet(request, response);
+                    return;
+                }
+                // Kiểm tra số lượng phải <= stock
+                if (item.getQuantity() > product.getStock()) {
+                    request.setAttribute("errorMessage", "Sản phẩm " + item.getProductName() + " không đủ hàng. Số lượng trong kho: " + product.getStock() + ", số lượng yêu cầu: " + item.getQuantity());
+                    doGet(request, response);
+                    return;
+                }
+                // Kiểm tra trạng thái stock
+                if (!"InStock".equals(product.getStockStatus())) {
+                    request.setAttribute("errorMessage", "Sản phẩm " + item.getProductName() + " không còn hàng");
                     doGet(request, response);
                     return;
                 }

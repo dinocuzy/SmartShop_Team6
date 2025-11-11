@@ -102,8 +102,62 @@ public class ProductDetailServlet extends HttpServlet {
                 request.setAttribute("errorMessage", "Sản phẩm này hiện không còn hàng");
             }
             
+            // Lấy sản phẩm gợi ý dựa trên lượt xem
+            java.util.List<Product> recommendedProducts = new java.util.ArrayList<>();
+            try {
+                HttpSession session = request.getSession();
+                User currentUser = (User) session.getAttribute("currentUser");
+                
+                // Lấy sản phẩm cùng category được xem nhiều
+                java.util.List<Product> categoryProducts = productViewDAO.getRecommendedProductsByCategory(
+                    product.getCategoryID(), productID, 4
+                );
+                recommendedProducts.addAll(categoryProducts);
+                
+                // Nếu user đã đăng nhập, lấy gợi ý dựa trên lượt xem của user
+                if (currentUser != null && recommendedProducts.size() < 6) {
+                    java.util.List<Product> userProducts = productViewDAO.getRecommendedProductsByUserViews(
+                        currentUser.getUserID(), 6 - recommendedProducts.size()
+                    );
+                    // Loại bỏ trùng lặp
+                    for (Product p : userProducts) {
+                        boolean exists = false;
+                        for (Product existing : recommendedProducts) {
+                            if (existing.getProductID() == p.getProductID()) {
+                                exists = true;
+                                break;
+                            }
+                        }
+                        if (!exists && recommendedProducts.size() < 6 && p.getProductID() != productID) {
+                            recommendedProducts.add(p);
+                        }
+                    }
+                }
+                
+                // Nếu vẫn chưa đủ, bổ sung bằng sản phẩm được xem nhiều nhất
+                if (recommendedProducts.size() < 6) {
+                    java.util.List<Product> mostViewed = productViewDAO.getMostViewedProducts(6);
+                    for (Product p : mostViewed) {
+                        boolean exists = false;
+                        for (Product existing : recommendedProducts) {
+                            if (existing.getProductID() == p.getProductID() || p.getProductID() == productID) {
+                                exists = true;
+                                break;
+                            }
+                        }
+                        if (!exists && recommendedProducts.size() < 6) {
+                            recommendedProducts.add(p);
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("Error getting recommended products: " + e.getMessage());
+                e.printStackTrace();
+            }
+            
             // Set attributes
             request.setAttribute("product", product);
+            request.setAttribute("recommendedProducts", recommendedProducts);
             
             // Forward đến JSP
             request.getRequestDispatcher("/views/store/productDetail.jsp").forward(request, response);

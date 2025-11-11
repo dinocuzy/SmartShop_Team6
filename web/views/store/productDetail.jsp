@@ -172,6 +172,66 @@
                 </div>
             </div>
             
+            <!-- Recommended Products Section -->
+            <c:if test="${not empty recommendedProducts}">
+                <div class="row mt-5">
+                    <div class="col-12">
+                        <h4 class="mb-4"><i class="bi bi-star-fill text-warning"></i> Sản phẩm gợi ý dựa trên lượt xem</h4>
+                        <div class="row g-4">
+                            <c:forEach var="recProduct" items="${recommendedProducts}" varStatus="status">
+                                <c:if test="${status.index < 6}">
+                                    <div class="col-md-4 col-sm-6">
+                                        <div class="card product-card h-100 border-0 shadow-sm">
+                                            <a href="${pageContext.request.contextPath}/product/detail?id=${recProduct.productID}" class="text-decoration-none">
+                                                <div class="position-relative">
+                                                    <img src="${pageContext.request.contextPath}${recProduct.imageUrl}" 
+                                                         class="card-img-top product-image" 
+                                                         alt="${recProduct.productName}"
+                                                         onerror="this.src='${pageContext.request.contextPath}/images/default-product.png'">
+                                                    <c:if test="${recProduct.isSpecial}">
+                                                        <span class="badge bg-danger position-absolute top-0 start-0 m-2">Đặc biệt</span>
+                                                    </c:if>
+                                                </div>
+                                            </a>
+                                            <div class="card-body d-flex flex-column">
+                                                <h6 class="card-title">
+                                                    <a href="${pageContext.request.contextPath}/product/detail?id=${recProduct.productID}" 
+                                                       class="text-decoration-none text-dark">
+                                                        ${recProduct.productName}
+                                                    </a>
+                                                </h6>
+                                                <div class="mt-auto">
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <div>
+                                                            <span class="text-danger fw-bold fs-5">
+                                                                <fmt:formatNumber value="${recProduct.price}" type="currency" currencyCode="VND" />
+                                                            </span>
+                                                        </div>
+                                                        <c:if test="${recProduct.stock > 0}">
+                                                            <span class="badge bg-success">Còn hàng</span>
+                                                        </c:if>
+                                                        <c:if test="${recProduct.stock <= 0}">
+                                                            <span class="badge bg-secondary">Hết hàng</span>
+                                                        </c:if>
+                                                    </div>
+                                                    <div class="mt-2">
+                                                        <button class="btn btn-primary btn-sm w-100" 
+                                                                onclick="addToCart(${recProduct.productID})"
+                                                                ${recProduct.stock <= 0 ? 'disabled' : ''}>
+                                                            <i class="bi bi-cart-plus"></i> Thêm vào giỏ
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </c:if>
+                            </c:forEach>
+                        </div>
+                    </div>
+                </div>
+            </c:if>
+            
             <!-- Back to Shop -->
             <div class="text-center mt-4">
                 <a href="${pageContext.request.contextPath}/home" class="btn btn-outline-primary">

@@ -419,4 +419,138 @@ public class ProductDAO implements IProductDAO {
         
         return product;
     }
+    
+    @Override
+    public List<Product> searchForChatbot(String keyword, boolean includeInactive) {
+        List<Product> products = new ArrayList<>();
+        
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return products;
+        }
+        
+        keyword = keyword.trim().toLowerCase();
+        
+        // Chuẩn hóa từ khóa: map các từ viết tắt và từ đồng nghĩa
+        String normalizedKeyword = normalizeSearchKeyword(keyword);
+        
+        // Tách từ khóa thành các từ riêng lẻ
+        String[] keywords = normalizedKeyword.split("\\s+");
+        
+        // Tạo danh sách các pattern để search
+        List<String> searchPatterns = new ArrayList<>();
+        searchPatterns.add(normalizedKeyword); // Từ khóa đầy đủ
+        for (String kw : keywords) {
+            if (kw.length() > 1) { // Bỏ qua từ quá ngắn
+                searchPatterns.add(kw);
+            }
+        }
+        
+        // Tìm kiếm với nhiều pattern
+        for (String pattern : searchPatterns) {
+            String sql;
+            
+            if (includeInactive) {
+                sql = "SELECT ProductID, CategoryID, ProductName, Slug, Description, Price, " +
+                      "Size, Color, IsSpecial, Stock, StockStatus, ImageUrl, CreatedAt, UpdatedAt " +
+                      "FROM Products " +
+                      "WHERE (LOWER(ProductName) LIKE ? OR LOWER(Description) LIKE ?) " +
+                      "ORDER BY ProductID ASC";
+            } else {
+                sql = "SELECT ProductID, CategoryID, ProductName, Slug, Description, Price, " +
+                      "Size, Color, IsSpecial, Stock, StockStatus, ImageUrl, CreatedAt, UpdatedAt " +
+                      "FROM Products " +
+                      "WHERE (LOWER(ProductName) LIKE ? OR LOWER(Description) LIKE ?) AND StockStatus = 'InStock' " +
+                      "ORDER BY ProductID ASC";
+            }
+            
+            try (Connection conn = DBConnection.getConnection();
+                 PreparedStatement ps = conn.prepareStatement(sql)) {
+                
+                String searchPattern = "%" + pattern + "%";
+                ps.setString(1, searchPattern);
+                ps.setString(2, searchPattern);
+                
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        Product product = mapResultSetToProduct(rs);
+                        // Kiểm tra trùng lặp (dựa trên ProductID)
+                        boolean exists = false;
+                        for (Product p : products) {
+                            if (p.getProductID() == product.getProductID()) {
+                                exists = true;
+                                break;
+                            }
+                        }
+                        if (!exists) {
+                            products.add(product);
+                        }
+                    }
+                }
+            } catch (SQLException e) {
+                System.err.println("Error searching products for chatbot: " + e.getMessage());
+                e.printStackTrace();
+            }
+            
+            // Nếu đã tìm thấy đủ sản phẩm, dừng lại
+            if (products.size() >= 20) {
+                break;
+            }
+        }
+        
+        return products;
+    }
+    
+    /**
+     * Chuẩn hóa từ khóa tìm kiếm: map các từ viết tắt và từ đồng nghĩa
+     */
+    private String normalizeSearchKeyword(String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return keyword;
+        }
+        
+        keyword = keyword.toLowerCase().trim();
+        
+        // Map các từ viết tắt và từ đồng nghĩa
+        // Điện thoại
+        if (keyword.contains("đt") || keyword.contains("dt")) {
+            keyword = keyword.replace("đt", "điện thoại").replace("dt", "điện thoại");
+        }
+        if (keyword.contains("phone") || keyword.contains("smartphone")) {
+            keyword = keyword.replace("phone", "điện thoại").replace("smartphone", "điện thoại");
+        }
+        // Xử lý "mua đt", "mua điện thoại" -> "điện thoại"
+        if (keyword.contains("mua đt") || keyword.contains("mua dt")) {
+            keyword = keyword.replace("mua đt", "điện thoại").replace("mua dt", "điện thoại");
+        }
+        if (keyword.contains("mua điện thoại")) {
+            keyword = keyword.replace("mua điện thoại", "điện thoại");
+        }
+        
+        // Laptop
+        if (keyword.contains("laptop") || keyword.contains("máy tính")) {
+            keyword = keyword.replace("máy tính", "laptop");
+        }
+        
+        // Tablet
+        if (keyword.contains("tablet") || keyword.contains("máy tính bảng")) {
+            keyword = keyword.replace("máy tính bảng", "tablet");
+        }
+        
+        // Tai nghe
+        if (keyword.contains("tai nghe") || keyword.contains("headphone") || keyword.contains("earphone")) {
+            keyword = keyword.replace("headphone", "tai nghe").replace("earphone", "tai nghe");
+        }
+        
+        // Sạc
+        if (keyword.contains("sạc") || keyword.contains("charger")) {
+            keyword = keyword.replace("charger", "sạc");
+        }
+        
+        // Ốp lưng
+        if (keyword.contains("ốp") || keyword.contains("case")) {
+            keyword = keyword.replace("case", "ốp");
+        }
+        
+        return keyword;
+    }
 }

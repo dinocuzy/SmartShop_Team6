@@ -203,12 +203,19 @@
                                                         title="Chỉnh sửa">
                                                     <i class="bi bi-pencil"></i>
                                                 </a>
-                                                <a href="${pageContext.request.contextPath}/admin/users?action=delete&userID=${user.userID}" 
-                                                   class="btn btn-sm btn-danger"
-                                                   onclick="return confirm('Bạn có chắc chắn muốn xóa người dùng này?');"
-                                                   title="Xóa">
-                                                    <i class="bi bi-trash"></i>
-                                                </a>
+                                                <c:if test="${user.roleID != 1 && !(user.roleName != null && user.roleName.equalsIgnoreCase('Admin'))}">
+                                                    <a href="${pageContext.request.contextPath}/admin/users?action=delete&userID=${user.userID}" 
+                                                       class="btn btn-sm btn-danger"
+                                                       onclick="return confirm('Bạn có chắc chắn muốn xóa người dùng này?');"
+                                                       title="Xóa">
+                                                        <i class="bi bi-trash"></i>
+                                                    </a>
+                                                </c:if>
+                                                <c:if test="${user.roleID == 1 || (user.roleName != null && user.roleName.equalsIgnoreCase('Admin'))}">
+                                                    <span class="btn btn-sm btn-secondary disabled" title="Không thể xóa tài khoản Admin">
+                                                        <i class="bi bi-lock"></i>
+                                                    </span>
+                                                </c:if>
                                             </td>
                                         </tr>
                                     </c:forEach>

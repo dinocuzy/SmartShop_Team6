@@ -277,33 +277,36 @@ public class ProductDAO implements IProductDAO {
         
         if (!sortOrder.equalsIgnoreCase("DESC")) sortOrder = "ASC";
         
-        // Build WHERE clause
+        // Build WHERE clause với prefix p. cho Products table
         StringBuilder whereClause = new StringBuilder();
         List<Object> params = new ArrayList<>();
         
         if (!includeInactive) {
-            whereClause.append("StockStatus = 'InStock'");
+            whereClause.append("p.StockStatus = 'InStock'");
         }
         
         if (searchKeyword != null && !searchKeyword.trim().isEmpty()) {
             if (whereClause.length() > 0) whereClause.append(" AND ");
-            whereClause.append("ProductName LIKE ?");
+            whereClause.append("p.ProductName LIKE ?");
             params.add("%" + searchKeyword.trim() + "%");
         }
         
         if (categoryID > 0) {
             if (whereClause.length() > 0) whereClause.append(" AND ");
-            whereClause.append("CategoryID = ?");
+            whereClause.append("p.CategoryID = ?");
             params.add(categoryID);
         }
         
         String where = whereClause.length() > 0 ? "WHERE " + whereClause.toString() : "";
         
-        // Build SQL với OFFSET/FETCH (SQL Server pagination)
+        // Build SQL với OFFSET/FETCH (SQL Server pagination) và JOIN Categories để lấy CategoryName
         int offset = (pageNumber - 1) * pageSize;
-        String sql = "SELECT ProductID, CategoryID, ProductName, Slug, Description, Price, " +
-                     "Size, Color, IsSpecial, Stock, StockStatus, ImageUrl, CreatedAt, UpdatedAt " +
-                     "FROM Products " + where + " ORDER BY " + sortBy + " " + sortOrder +
+        String sql = "SELECT p.ProductID, p.CategoryID, p.ProductName, p.Slug, p.Description, p.Price, " +
+                     "p.Size, p.Color, p.IsSpecial, p.Stock, p.StockStatus, p.ImageUrl, p.CreatedAt, p.UpdatedAt, " +
+                     "c.CategoryName " +
+                     "FROM Products p " +
+                     "LEFT JOIN Categories c ON p.CategoryID = c.CategoryID " +
+                     where + " ORDER BY p." + sortBy + " " + sortOrder +
                      " OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
         
         try (Connection conn = DBConnection.getConnection();
@@ -323,6 +326,11 @@ public class ProductDAO implements IProductDAO {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     Product product = mapResultSetToProduct(rs);
+                    // Set categoryName từ JOIN
+                    String categoryName = rs.getString("CategoryName");
+                    if (categoryName != null) {
+                        product.setCategoryName(categoryName);
+                    }
                     products.add(product);
                 }
             }

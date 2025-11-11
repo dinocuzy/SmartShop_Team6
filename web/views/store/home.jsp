@@ -944,6 +944,9 @@
             border-radius: 15px;
             overflow: hidden;
             transition: transform 0.3s;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
         }
         
         .product-card-home:hover {
@@ -958,10 +961,18 @@
             object-fit: cover;
             object-position: center;
             display: block;
+            flex-shrink: 0;
         }
         
         .product-info-home {
             padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+        
+        .product-info-home .add-to-cart-btn {
+            margin-top: auto;
         }
         
         .product-name-home {
@@ -969,6 +980,20 @@
             color: white;
             margin-bottom: 0.5rem;
             font-size: 1rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.4;
+            min-height: 2.8rem;
+            max-height: 2.8rem;
+        }
+        
+        .product-name-home a {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         
         .product-price-home {
@@ -1027,6 +1052,8 @@
             transition: transform 0.3s, box-shadow 0.3s;
             height: 100%;
             background: #2c2c2c;
+            display: flex;
+            flex-direction: column;
         }
         
         .product-card:hover {
@@ -1043,6 +1070,34 @@
             object-position: center;
             background: #1a1a1a;
             display: block;
+            flex-shrink: 0;
+        }
+        
+        .product-card .card-body {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+        
+        .product-card .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 0.5rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.4;
+            min-height: 2.8rem;
+            max-height: 2.8rem;
+        }
+        
+        .product-card .card-title a {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         
         .product-price {

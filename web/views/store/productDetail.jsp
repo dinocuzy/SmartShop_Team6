@@ -46,6 +46,35 @@
             color: #999;
         }
         
+        .product-card {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        
+        .product-card .card-body {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+        
+        .product-card .card-title {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.4;
+            min-height: 2.8rem;
+            max-height: 2.8rem;
+        }
+        
+        .product-card .card-title a {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
         .product-info-card {
             background: #f8f9fa;
             border-radius: 10px;
@@ -194,9 +223,9 @@
                                                 </div>
                                             </a>
                                             <div class="card-body d-flex flex-column">
-                                                <h6 class="card-title">
+                                                <h6 class="card-title" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; min-height: 2.8rem; max-height: 2.8rem;">
                                                     <a href="${pageContext.request.contextPath}/product/detail?id=${recProduct.productID}" 
-                                                       class="text-decoration-none text-dark">
+                                                       class="text-decoration-none text-dark" style="display: block; overflow: hidden; text-overflow: ellipsis;">
                                                         ${recProduct.productName}
                                                     </a>
                                                 </h6>

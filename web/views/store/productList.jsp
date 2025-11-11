@@ -239,6 +239,9 @@
             border: 1px solid #444;
             min-width: 0;
             width: 100%;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
         }
         
         .product-card:hover {
@@ -299,6 +302,9 @@
         
         .product-info {
             padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
         }
         
         .product-name {
@@ -306,11 +312,20 @@
             font-weight: 600;
             color: #ffffff;
             margin-bottom: 0.5rem;
-            min-height: 2.5rem;
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.4;
+            min-height: 2.8rem;
+            max-height: 2.8rem;
+        }
+        
+        .product-name a {
+            display: block;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         
         .product-price-wrapper {
@@ -653,6 +668,9 @@
                                                 ${product.productName}
                                             </a>
                                         </h3>
+                                        <p class="text-muted small mb-2" style="font-size: 0.85rem; color: #888 !important;">
+                                            ${product.categoryName != null ? product.categoryName : 'Chưa phân loại'}
+                                        </p>
                                         <div class="product-price-wrapper">
                                             <c:set var="originalPrice" value="${product.price}" />
                                             <c:set var="discountedPrice" value="${product.price}" />

@@ -53,6 +53,10 @@ public class StorefrontAccessFilter implements Filter {
         ALLOWED_URLS.add("/api"); // API endpoints (như /api/social-share)
         ALLOWED_URLS.add("/support-request"); // Support request được phép
         ALLOWED_URLS.add("/vnpay-callback"); // VNPay callback được phép (không phải truy cập storefront)
+        ALLOWED_URLS.add("/images"); // Static images
+        ALLOWED_URLS.add("/css"); // Static CSS
+        ALLOWED_URLS.add("/js"); // Static JavaScript
+        ALLOWED_URLS.add("/assets"); // Static assets
     }
     
     @Override
@@ -76,6 +80,12 @@ public class StorefrontAccessFilter implements Filter {
             String requestURI = httpRequest.getRequestURI();
             String contextPath = httpRequest.getContextPath();
             String path = requestURI.substring(contextPath.length());
+            
+            // Bỏ qua static resources (images, css, js, fonts, etc.)
+            if (isStaticResource(path)) {
+                chain.doFilter(request, response);
+                return;
+            }
             
             // Nếu là root path "/", kiểm tra xem có phải là storefront không
             if ("/".equals(path)) {
@@ -189,6 +199,33 @@ public class StorefrontAccessFilter implements Filter {
             }
         }
         return false;
+    }
+    
+    /**
+     * Kiểm tra xem path có phải là static resource không
+     * @param path Đường dẫn URL
+     * @return true nếu là static resource
+     */
+    private boolean isStaticResource(String path) {
+        // Kiểm tra các extension của static resources
+        String lowerPath = path.toLowerCase();
+        return lowerPath.startsWith("/images/") ||
+               lowerPath.startsWith("/css/") ||
+               lowerPath.startsWith("/js/") ||
+               lowerPath.startsWith("/assets/") ||
+               lowerPath.startsWith("/fonts/") ||
+               lowerPath.endsWith(".css") ||
+               lowerPath.endsWith(".js") ||
+               lowerPath.endsWith(".png") ||
+               lowerPath.endsWith(".jpg") ||
+               lowerPath.endsWith(".jpeg") ||
+               lowerPath.endsWith(".gif") ||
+               lowerPath.endsWith(".svg") ||
+               lowerPath.endsWith(".ico") ||
+               lowerPath.endsWith(".woff") ||
+               lowerPath.endsWith(".woff2") ||
+               lowerPath.endsWith(".ttf") ||
+               lowerPath.endsWith(".eot");
     }
 }
 

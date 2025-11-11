@@ -347,23 +347,68 @@
         
         .hero-content {
             position: relative;
-            min-height: 500px;
-            overflow: hidden;
+            display: flex;
+            flex-direction: column;
             border-radius: 15px;
+            padding: 1rem;
+            overflow: hidden;
         }
         
-        /* Carousel làm background */
-        .promotion-carousel-hero {
+        /* Carousel làm background mờ cho toàn bộ khối */
+        .hero-content::before {
+            content: '';
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            width: 100%;
-            height: 100%;
+            z-index: 0;
+            background-image: var(--blur-bg-image, url('${pageContext.request.contextPath}/images/promotion-banner-1.png'));
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            filter: blur(8px);
+            opacity: 0.4;
+            transition: background-image 0.5s ease;
+        }
+        
+        /* Overlay nhẹ để text dễ đọc */
+        .hero-content::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             z-index: 1;
+            background: rgba(26, 26, 26, 0.2);
+        }
+        
+        /* Tất cả nội dung bên trong phải có z-index cao hơn */
+        .hero-text-top,
+        .promotion-carousel-hero,
+        .feature-cards-below {
+            position: relative;
+            z-index: 2;
+        }
+        
+        /* Text trên cùng */
+        .hero-text-top {
+            width: 100%;
+            text-align: center;
+            margin-bottom: 1rem;
+            flex-shrink: 0;
+        }
+        
+        /* Carousel ở giữa */
+        .promotion-carousel-hero {
+            position: relative;
+            width: 100%;
+            flex: 1;
+            min-height: 200px;
             border-radius: 15px;
             overflow: hidden;
+            margin-bottom: 1rem;
         }
         
         .promotion-carousel-hero .carousel {
@@ -379,25 +424,127 @@
         .promotion-carousel-hero .carousel-item {
             width: 100%;
             height: 100%;
+            position: relative; /* Cần thiết cho fallback absolute positioning */
         }
         
         .promotion-banner-hero-img {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            display: block;
+            display: block !important;
+            min-height: 400px;
+            position: relative;
+            z-index: 1;
+            filter: none !important;
+            opacity: 1 !important;
         }
         
-        /* Overlay để text dễ đọc */
-        .carousel-background-overlay {
+        /* Fallback khi ảnh không load được */
+        .promotion-banner-fallback {
+            width: 100%;
+            height: 100%;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 2rem;
+            font-weight: bold;
+            text-align: center;
+            padding: 2rem;
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: linear-gradient(135deg, rgba(26, 26, 26, 0.7) 0%, rgba(45, 27, 61, 0.7) 100%);
+            z-index: 1;
+        }
+        
+        /* Promotion Banner với gradient background */
+        .promotion-banner-gradient {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .promotion-banner-gradient::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: rotate 20s linear infinite;
+        }
+        
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .promotion-banner-content {
+            position: relative;
             z-index: 2;
-            pointer-events: none;
+            text-align: center;
+            color: white;
+            padding: 2rem;
+        }
+        
+        .promotion-banner-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .promotion-banner-discount {
+            font-size: 4rem;
+            font-weight: bold;
+            margin: 1rem 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .promotion-banner-description {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+        
+        /* Gradient variants cho các promotions khác nhau */
+        .promotion-gradient-1 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .promotion-gradient-2 {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .promotion-gradient-3 {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        
+        .promotion-gradient-4 {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+        
+        .promotion-gradient-5 {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+        
+        .promotion-gradient-default {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        /* Overlay để text dễ đọc - ẩn để ảnh carousel hiển thị tự nhiên */
+        .carousel-background-overlay {
+            display: none;
         }
         
         /* Ẩn carousel controls (prev/next buttons) */
@@ -445,24 +592,36 @@
             opacity: 0.8;
         }
         
-        /* Nội dung hiển thị phía trên */
+        /* Nội dung hiển thị phía trên carousel */
         .hero-content-overlay {
-            position: relative;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             z-index: 3;
             padding: 2rem;
             width: 100%;
+            height: 100%;
             display: flex;
             flex-direction: column;
             justify-content: center;
+            align-items: center;
+            pointer-events: none;
+        }
+        
+        .hero-content-overlay * {
+            pointer-events: auto;
         }
         
         .hero-text {
-            font-size: 4rem;
+            font-size: 3rem;
             font-weight: bold;
             line-height: 1.2;
-            margin-bottom: 2rem;
+            margin-bottom: 1rem;
             width: 100%;
             display: block;
+            text-align: center;
         }
         
         .hero-text-main {
@@ -480,12 +639,12 @@
         }
         
         .hero-subtitle {
-            font-size: 1.5rem;
+            font-size: 1.2rem;
             color: #fff;
-            margin-bottom: 2rem;
+            margin-bottom: 0;
             width: 100%;
             display: block;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            text-align: center;
         }
         
         .feature-cards {
@@ -494,6 +653,16 @@
             flex-wrap: wrap;
             margin-bottom: 2rem;
             width: 100%;
+        }
+        
+        /* Feature cards nằm dưới carousel */
+        .feature-cards-below {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            width: 100%;
+            justify-content: center;
+            flex-shrink: 0;
         }
         
         .feature-card {
@@ -939,33 +1108,46 @@
         <div class="container">
             <div class="row">
                 <div class="col-lg-8 hero-content">
-                    <!-- Promotion Banner Carousel làm background -->
+                    <!-- Text trên cùng -->
+                    <div class="hero-text-top">
+                        <div class="hero-text">
+                            <span class="hero-text-main">KHAI TRƯƠNG</span>
+                            <span class="hero-dots"> • </span>
+                            <span class="hero-text-sub">CỬA HÀNG</span>
+                        </div>
+                        <p class="hero-subtitle">Giảm giá lên đến 30% - Ưu đãi đặc biệt</p>
+                    </div>
+                    
+                    <!-- Carousel ở giữa -->
                     <div class="promotion-carousel-hero">
-                        <div id="promotionCarouselHero" class="carousel slide" data-bs-ride="carousel" data-bs-interval="3000">
+                        <div id="promotionCarouselHero" class="carousel slide" data-bs-ride="carousel" data-bs-interval="4000">
                             <div class="carousel-inner">
+                                <!-- Banner 1 -->
                                 <div class="carousel-item active">
-                                    <img src="${pageContext.request.contextPath}/images/promotion-banner-1.jpg" 
+                                    <img src="${pageContext.request.contextPath}/images/promotion-banner-1.png" 
                                          class="d-block w-100 promotion-banner-hero-img" 
                                          alt="Khuyến mãi 1"
-                                         data-carousel-index="0"
-                                         onerror="this.onerror=null; this.style.display='none';">
+                                         data-carousel-index="1"
+                                         onerror="if(typeof handleBannerImageError === 'function') handleBannerImageError(this, 1); else this.style.display='none';">
                                 </div>
+                                <!-- Banner 2 -->
                                 <div class="carousel-item">
-                                    <img src="${pageContext.request.contextPath}/images/promotion-banner-2.jpg" 
+                                    <img src="${pageContext.request.contextPath}/images/promotion-banner-2.png" 
                                          class="d-block w-100 promotion-banner-hero-img" 
                                          alt="Khuyến mãi 2"
-                                         data-carousel-index="1"
-                                         onerror="this.onerror=null; this.style.display='none';">
+                                         data-carousel-index="2"
+                                         onerror="if(typeof handleBannerImageError === 'function') handleBannerImageError(this, 2); else this.style.display='none';">
                                 </div>
+                                <!-- Banner 3 -->
                                 <div class="carousel-item">
                                     <img src="${pageContext.request.contextPath}/images/promotion-banner-3.jpg" 
                                          class="d-block w-100 promotion-banner-hero-img" 
                                          alt="Khuyến mãi 3"
-                                         data-carousel-index="2"
-                                         onerror="this.onerror=null; this.style.display='none';">
+                                         data-carousel-index="3"
+                                         onerror="if(typeof handleBannerImageError === 'function') handleBannerImageError(this, 3); else this.style.display='none';">
                                 </div>
                             </div>
-                            <!-- Carousel Indicators (3 gạch ngang) -->
+                            <!-- Carousel Indicators -->
                             <div class="carousel-indicators">
                                 <button type="button" data-bs-target="#promotionCarouselHero" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
                                 <button type="button" data-bs-target="#promotionCarouselHero" data-bs-slide-to="1" aria-label="Slide 2"></button>
@@ -976,20 +1158,12 @@
                         <div class="carousel-background-overlay"></div>
                     </div>
                     
-                    <!-- Nội dung hiển thị phía trên carousel -->
-                    <div class="hero-content-overlay">
-                        <div class="hero-text">
-                            <span class="hero-text-main">KHAI TRƯƠNG</span>
-                            <span class="hero-dots"> • </span>
-                            <span class="hero-text-sub">CỬA HÀNG</span>
-                        </div>
-                        <p class="hero-subtitle">Giảm giá lên đến 30% - Ưu đãi đặc biệt</p>
-                        <div class="feature-cards">
-                            <div class="feature-card">BẢO HÀNH NHANH CHÓNG</div>
-                            <div class="feature-card">TRẢ GÓP 0%</div>
-                            <div class="feature-card">FREESHIP</div>
-                            <div class="feature-card">CHÍNH HÃNG 100%</div>
-                        </div>
+                    <!-- Feature cards ở dưới -->
+                    <div class="feature-cards-below">
+                        <div class="feature-card">BẢO HÀNH NHANH CHÓNG</div>
+                        <div class="feature-card">TRẢ GÓP 0%</div>
+                        <div class="feature-card">FREESHIP</div>
+                        <div class="feature-card">CHÍNH HÃNG 100%</div>
                     </div>
                 </div>
                 <div class="col-lg-4 hero-promo-section">
@@ -1058,15 +1232,15 @@
             </div>
             <div class="deal-stages">
                 <div class="deal-stage active">
-                    <span>07/01 - 08/01</span>
+                    <span>7/11 - 7/12</span>
                     <small>Đang diễn ra</small>
                 </div>
                 <div class="deal-stage">
-                    <span>09/01 - 11/01</span>
+                    <span>11/11</span>
                     <small>Sắp diễn ra</small>
                 </div>
                 <div class="deal-stage">
-                    <span>12/01 - 15/01</span>
+                    <span>12/12</span>
                     <small>Sắp diễn ra</small>
                 </div>
             </div>
@@ -1078,7 +1252,7 @@
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2 class="section-title-large mb-0 text-primary"><i class="bi bi-fire"></i> Sản phẩm bán chạy</h2>
                 <div class="section-nav">
-                    <a href="#" class="section-nav-link active">Gợi ý hôm nay</a>
+                    <a href="#" class="section-nav-link active">Sản phẩm gợi ý</a>
                     <span style="color: #4a4a4a;">•</span>
                     <a href="${pageContext.request.contextPath}/shop?category=4" class="section-nav-link">Máy chơi game</a>
                     <span style="color: #4a4a4a;">•</span>
@@ -1133,6 +1307,55 @@
                 </c:forEach>
             </div>
         </section>
+        
+        <!-- Recommended Products Based on Views Section -->
+        <c:if test="${not empty recommendedProducts}">
+            <section class="mb-5 best-selling-products">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 class="section-title-large mb-0 text-success"><i class="bi bi-star-fill"></i> Sản phẩm gợi ý dựa trên lượt xem</h2>
+                    <a href="${pageContext.request.contextPath}/shop" class="btn btn-outline-success">
+                        Xem thêm <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+                
+                <div class="products-scroll">
+                    <c:forEach var="product" items="${recommendedProducts}">
+                        <c:if test="${product.stockStatus == 'InStock' && product.stock > 0}">
+                            <div class="product-card-home" style="position: relative;">
+                                <c:choose>
+                                    <c:when test="${not empty product.imageUrl}">
+                                        <img src="${product.imageUrl}" class="product-image-home" alt="${product.productName}">
+                                    </c:when>
+                                    <c:otherwise>
+                                        <div class="product-image-home d-flex align-items-center justify-content-center bg-light">
+                                            <i class="bi bi-image" style="font-size: 3rem; color: #ccc;"></i>
+                                        </div>
+                                    </c:otherwise>
+                                </c:choose>
+                                <div class="product-info-home">
+                                    <div class="product-name-home">
+                                        <a href="javascript:void(0);" 
+                                           onclick="openProductModal(${product.productID})"
+                                           style="color: white; text-decoration: none;">
+                                            ${product.productName}
+                                        </a>
+                                    </div>
+                                    <div class="product-price-home">
+                                        <fmt:formatNumber value="${product.price}" type="currency" 
+                                            currencyCode="VND" currencySymbol="₫" groupingUsed="true"/>
+                                    </div>
+                                    <div class="product-status">Được xem nhiều</div>
+                                    <button class="btn add-to-cart-btn" 
+                                            onclick="addToCart(${product.productID}, '${pageContext.request.contextPath}/home')">
+                                        Thêm vào giỏ
+                                    </button>
+                                </div>
+                            </div>
+                        </c:if>
+                    </c:forEach>
+                </div>
+            </section>
+        </c:if>
         
         <!-- All Products Grid Section -->
         <section class="products-grid-section">
@@ -1276,7 +1499,7 @@
                 <div class="col-lg-2 col-md-4 col-sm-6">
                     <div class="service-item">
                         <i class="bi bi-fire service-icon"></i>
-                        <p>DEAL HOT BÙNG NỔ<br><small>Flash sale giảm giá cực sốc</small></p>
+                        <p>DEAL HOT<br><small>Ưu đãi đặc biệt</small></p>
                     </div>
                 </div>
                 <div class="col-lg-2 col-md-4 col-sm-6">
@@ -1328,46 +1551,130 @@
             });
         }
         
-        // Set hero-content height to match content and promo cards
+        // Set hero-content height bằng với promo cards
         function setCarouselHeight() {
-            const heroContentOverlay = document.querySelector('.hero-content-overlay');
             const heroContent = document.querySelector('.hero-content');
             const promoCardsContainer = document.querySelector('.hero-promo-cards');
             
-            if (heroContentOverlay && heroContent && promoCardsContainer) {
-                // Lấy chiều cao của nội dung overlay
-                const overlayHeight = heroContentOverlay.offsetHeight;
+            if (heroContent && promoCardsContainer) {
                 // Lấy chiều cao của promo cards
                 const promoCardsHeight = promoCardsContainer.offsetHeight;
                 
-                // Set chiều cao cho hero-content = max của cả hai (tối thiểu 500px)
-                const targetHeight = Math.max(overlayHeight, promoCardsHeight, 500);
-                heroContent.style.minHeight = targetHeight + 'px';
-                heroContent.style.height = targetHeight + 'px';
+                // Set chiều cao cho hero-content = chiều cao của promo cards
+                heroContent.style.height = promoCardsHeight + 'px';
+                heroContent.style.minHeight = promoCardsHeight + 'px';
                 
-                console.log('Hero content height set to:', targetHeight, 'overlay:', overlayHeight, 'promo:', promoCardsHeight);
+                console.log('Hero content height set to:', promoCardsHeight, 'px (matching promo cards)');
             } else {
                 // Retry nếu chưa có
                 setTimeout(setCarouselHeight, 200);
             }
         }
         
+        // Cập nhật background mờ khi carousel thay đổi
+        function updateBlurredBackground() {
+            const carousel = document.getElementById('promotionCarouselHero');
+            const heroContent = document.querySelector('.hero-content');
+            
+            if (!carousel || !heroContent) return;
+            
+            // Lấy ảnh đang active
+            const activeItem = carousel.querySelector('.carousel-item.active');
+            if (activeItem) {
+                const activeImg = activeItem.querySelector('.promotion-banner-hero-img');
+                if (activeImg && activeImg.src) {
+                    // Cập nhật background cho hero-content
+                    heroContent.style.setProperty('--blur-bg-image', 'url(' + activeImg.src + ')');
+                }
+            }
+        }
+        
+        // Lắng nghe sự kiện khi carousel slide
+        function setupCarouselBackgroundUpdate() {
+            const carousel = document.getElementById('promotionCarouselHero');
+            if (carousel) {
+                carousel.addEventListener('slid.bs.carousel', function() {
+                    updateBlurredBackground();
+                });
+                // Cập nhật lần đầu
+                updateBlurredBackground();
+            }
+        }
+        
+        // Hàm xử lý khi ảnh banner không load được
+        function handleBannerImageError(img, index) {
+            console.log('Banner image error for index:', index);
+            
+            // Ẩn ảnh lỗi
+            img.style.display = 'none';
+            
+            // Tìm carousel item chứa ảnh
+            const carouselItem = img.closest('.carousel-item');
+            if (!carouselItem) return;
+            
+            // Kiểm tra xem đã có fallback chưa
+            if (carouselItem.querySelector('.promotion-banner-fallback')) {
+                return; // Đã có fallback rồi
+            }
+            
+            // Tạo fallback gradient (chỉ overlay, không có text)
+            const fallback = document.createElement('div');
+            fallback.className = 'promotion-banner-fallback';
+            
+            // Chọn gradient theo index
+            const gradients = [
+                'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'
+            ];
+            fallback.style.background = gradients[index - 1] || gradients[0];
+            
+            // Không thêm text, chỉ giữ gradient overlay
+            fallback.innerHTML = '';
+            
+            carouselItem.appendChild(fallback);
+            setCarouselHeight();
+        }
+        
         // Initialize on page load
         window.addEventListener('DOMContentLoaded', function() {
             setPromoCardBackgrounds();
+            setupCarouselBackgroundUpdate();
             
-            // Cập nhật lại khi carousel images load xong
+            // Kiểm tra và xử lý các ảnh banner
             const carouselImages = document.querySelectorAll('.promotion-banner-hero-img');
+            console.log('Found carousel images:', carouselImages.length);
+            
             carouselImages.forEach(function(img) {
+                const index = parseInt(img.getAttribute('data-carousel-index') || '1');
+                console.log('Checking image:', img.src, 'Index:', index);
+                
+                // Đảm bảo ảnh hiển thị
+                img.style.display = 'block';
+                img.style.visibility = 'visible';
+                img.style.opacity = '1';
+                
+                // Kiểm tra xem ảnh đã load thành công chưa
                 if (img.complete) {
-                    setCarouselHeight();
+                    // Ảnh đã load xong
+                    if (img.naturalWidth === 0 || img.naturalHeight === 0) {
+                        // Ảnh lỗi (không có kích thước)
+                        console.error('Image failed to load (no dimensions):', img.src, 'Width:', img.naturalWidth, 'Height:', img.naturalHeight);
+                        handleBannerImageError(img, index);
+                    } else {
+                        // Ảnh load thành công
+                        console.log('Image loaded successfully:', img.src, 'Width:', img.naturalWidth, 'Height:', img.naturalHeight);
+                        setCarouselHeight();
+                    }
                 } else {
+                    // Đợi ảnh load
                     img.addEventListener('load', function() {
+                        console.log('Image loaded:', img.src, 'Width:', img.naturalWidth, 'Height:', img.naturalHeight);
                         setCarouselHeight();
                     });
                     img.addEventListener('error', function() {
-                        // Nếu ảnh lỗi, vẫn cập nhật chiều cao
-                        setCarouselHeight();
+                        console.error('Image load error:', img.src);
+                        handleBannerImageError(img, index);
                     });
                 }
             });
@@ -1381,6 +1688,16 @@
         window.addEventListener('load', function() {
             setPromoCardBackgrounds();
             setCarouselHeight();
+            
+            // Kiểm tra lại các ảnh sau khi page load xong
+            const carouselImages = document.querySelectorAll('.promotion-banner-hero-img');
+            carouselImages.forEach(function(img) {
+                if (img.style.display !== 'none' && (img.naturalWidth === 0 || img.naturalHeight === 0)) {
+                    const index = parseInt(img.getAttribute('data-carousel-index') || '1');
+                    handleBannerImageError(img, index);
+                }
+            });
+            
             // Retry sau khi tất cả images load xong
             setTimeout(setCarouselHeight, 200);
             setTimeout(setCarouselHeight, 500);

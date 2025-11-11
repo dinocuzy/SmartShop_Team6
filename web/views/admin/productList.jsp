@@ -239,6 +239,7 @@
                                                         data-product-stockstatus="${fn:escapeXml(product.stockStatus)}"
                                                         data-product-special="${product.special}"
                                                         data-product-imageurl="${fn:escapeXml(product.imageUrl)}"
+                                                        data-product-promotion-id="${not empty promotionID ? promotionID : ''}"
                                                         title="Chỉnh sửa">
                                                     <i class="bi bi-pencil"></i>
                                                 </button>
@@ -528,14 +529,41 @@
                 document.getElementById('modalProductName').value = button.getAttribute('data-product-name') || '';
                 document.getElementById('modalSlug').value = button.getAttribute('data-product-slug') || '';
                 document.getElementById('modalDescription').value = button.getAttribute('data-product-description') || '';
-                // Lấy giá hiện tại (có thể là giá sau giảm nếu có promotion)
-                const price = parseFloat(button.getAttribute('data-product-price')) || 0;
-                document.getElementById('modalPrice').value = price.toFixed(2);
+                
+                // Lấy promotion ID của sản phẩm
+                const productPromotionID = button.getAttribute('data-product-promotion-id') || '';
                 
                 // Set promotion nếu có
-                <c:if test="${not empty currentPromotionID}">
-                    document.getElementById('modalPromotionID').value = '${currentPromotionID}';
-                </c:if>
+                if (productPromotionID) {
+                    document.getElementById('modalPromotionID').value = productPromotionID;
+                } else {
+                    document.getElementById('modalPromotionID').value = '';
+                }
+                
+                // Lấy giá hiện tại (có thể là giá sau giảm nếu có promotion)
+                const currentPrice = parseFloat(button.getAttribute('data-product-price')) || 0;
+                
+                // Nếu có promotion, tính ngược lại giá gốc từ giá sau giảm
+                let originalPrice = currentPrice;
+                if (productPromotionID) {
+                    const promotionSelect = document.getElementById('modalPromotionID');
+                    const selectedOption = promotionSelect.options[promotionSelect.selectedIndex];
+                    if (selectedOption) {
+                        const discountPercent = parseFloat(selectedOption.getAttribute('data-discount-percent')) || 0;
+                        const discountAmount = parseFloat(selectedOption.getAttribute('data-discount-amount')) || 0;
+                        
+                        if (discountPercent > 0) {
+                            // Tính ngược: giá gốc = giá sau giảm / (1 - discountPercent/100)
+                            originalPrice = currentPrice / (1 - discountPercent / 100);
+                        } else if (discountAmount > 0) {
+                            // Tính ngược: giá gốc = giá sau giảm + discountAmount
+                            originalPrice = currentPrice + discountAmount;
+                        }
+                    }
+                }
+                
+                // Set giá gốc vào input
+                document.getElementById('modalPrice').value = originalPrice.toFixed(2);
                 
                 // Tính lại giá sau giảm
                 calculatePriceFromPromotion();

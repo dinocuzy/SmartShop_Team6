@@ -293,6 +293,17 @@ public class PromotionServlet extends HttpServlet {
             }
         }
         
+        // Validate: ngày bắt đầu phải trước ngày kết thúc
+        if (startDate.after(endDate) || startDate.equals(endDate)) {
+            request.setAttribute("errorMessage", "Ngày bắt đầu phải trước ngày kết thúc");
+            if (promotionIDParam != null && !promotionIDParam.isEmpty()) {
+                showEditForm(request, response);
+            } else {
+                showAddForm(request, response);
+            }
+            return;
+        }
+        
         promotion.setTitle(title.trim());
         promotion.setDescription(description != null ? description.trim() : null);
         promotion.setDiscountPercent(discountPercent);

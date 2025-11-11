@@ -186,8 +186,26 @@ public class CartServlet extends HttpServlet {
                 return;
             }
             
+            // Kiểm tra số lượng phải <= stock
+            if (quantity > product.getStock()) {
+                request.setAttribute("errorMessage", "Số lượng sản phẩm không được vượt quá số lượng trong kho (" + product.getStock() + ")");
+                response.sendRedirect(request.getContextPath() + "/product/detail?id=" + productID);
+                return;
+            }
+            
             HttpSession session = request.getSession();
             Cart cart = getCart(session);
+            
+            // Kiểm tra nếu sản phẩm đã có trong giỏ hàng, tổng số lượng không được vượt quá stock
+            CartItem existingItem = cart.getItem(productID);
+            if (existingItem != null) {
+                int totalQuantity = existingItem.getQuantity() + quantity;
+                if (totalQuantity > product.getStock()) {
+                    request.setAttribute("errorMessage", "Tổng số lượng sản phẩm trong giỏ hàng không được vượt quá số lượng trong kho (" + product.getStock() + ")");
+                    response.sendRedirect(request.getContextPath() + "/product/detail?id=" + productID);
+                    return;
+                }
+            }
             
             // Tạo CartItem mới
             CartItem cartItem = new CartItem();
@@ -249,6 +267,21 @@ public class CartServlet extends HttpServlet {
             
             if (quantity < 1) {
                 quantity = 1;
+            }
+            
+            // Lấy thông tin sản phẩm để kiểm tra stock
+            Product product = productService.getProductById(productID);
+            if (product == null) {
+                request.setAttribute("errorMessage", "Sản phẩm không tồn tại");
+                response.sendRedirect(request.getContextPath() + "/cart");
+                return;
+            }
+            
+            // Kiểm tra số lượng phải <= stock
+            if (quantity > product.getStock()) {
+                request.setAttribute("errorMessage", "Số lượng sản phẩm không được vượt quá số lượng trong kho (" + product.getStock() + ")");
+                response.sendRedirect(request.getContextPath() + "/cart");
+                return;
             }
             
             HttpSession session = request.getSession();

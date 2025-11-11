@@ -70,6 +70,20 @@ public class UserService implements IUserService {
         if (userID <= 0) {
             throw new IllegalArgumentException("User ID must be greater than 0");
         }
+        
+        // Kiểm tra user có phải Admin không
+        User user = userDAO.getById(userID);
+        if (user != null) {
+            String roleName = user.getRoleName();
+            if (roleName != null && roleName.equalsIgnoreCase("Admin")) {
+                throw new IllegalArgumentException("Không thể xóa tài khoản Admin");
+            }
+            // Hoặc kiểm tra RoleID = 1 (thường Admin có RoleID = 1)
+            if (user.getRoleID() == 1) {
+                throw new IllegalArgumentException("Không thể xóa tài khoản Admin");
+            }
+        }
+        
         boolean deleted = userDAO.delete(userID);
         if (!deleted) {
             throw new RuntimeException("Failed to delete user with ID: " + userID);

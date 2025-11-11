@@ -442,6 +442,25 @@ public class UserServlet extends HttpServlet {
         
         try {
             int userID = Integer.parseInt(userIDParam);
+            
+            // Kiểm tra user bị xóa có phải Admin không
+            User userToDelete = userService.getUserById(userID);
+            if (userToDelete != null) {
+                // Kiểm tra roleName hoặc roleID
+                String roleName = userToDelete.getRoleName();
+                if (roleName != null && roleName.equalsIgnoreCase("Admin")) {
+                    request.setAttribute("errorMessage", "Không thể xóa tài khoản Admin");
+                    listUsers(request, response);
+                    return;
+                }
+                // Hoặc kiểm tra RoleID = 1 (thường Admin có RoleID = 1)
+                if (userToDelete.getRoleID() == 1) {
+                    request.setAttribute("errorMessage", "Không thể xóa tài khoản Admin");
+                    listUsers(request, response);
+                    return;
+                }
+            }
+            
             userService.deleteUser(userID);
             request.setAttribute("successMessage", "User deleted successfully");
         } catch (NumberFormatException e) {

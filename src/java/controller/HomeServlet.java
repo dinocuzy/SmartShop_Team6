@@ -16,6 +16,10 @@ import promotionservice.IPromotionService;
 import promotionservice.PromotionService;
 import promotionproductdao.IPromotionProductDAO;
 import promotionproductdao.PromotionProductDAO;
+import productviewdao.IProductViewDAO;
+import productviewdao.ProductViewDAO;
+import model.User;
+import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
 import java.util.List;
@@ -36,6 +40,7 @@ public class HomeServlet extends HttpServlet {
     private ICategoryService categoryService;
     private IPromotionService promotionService;
     private IPromotionProductDAO promotionProductDAO;
+    private IProductViewDAO productViewDAO;
     
     @Override
     public void init() throws ServletException {
@@ -45,6 +50,7 @@ public class HomeServlet extends HttpServlet {
             categoryService = new CategoryService();
             promotionService = new PromotionService();
             promotionProductDAO = new PromotionProductDAO();
+            productViewDAO = new ProductViewDAO();
         } catch (Exception e) {
             System.err.println("Error initializing HomeServlet: " + e.getMessage());
             e.printStackTrace();
@@ -57,13 +63,30 @@ public class HomeServlet extends HttpServlet {
             throws ServletException, IOException {
         
         String servletPath = request.getServletPath();
+        String requestURI = request.getRequestURI();
+        String contextPath = request.getContextPath();
+        String pathInfo = request.getPathInfo();
+        
+        // Debug logging
+        System.out.println("HomeServlet.doGet - servletPath: " + servletPath);
+        System.out.println("HomeServlet.doGet - requestURI: " + requestURI);
+        System.out.println("HomeServlet.doGet - contextPath: " + contextPath);
+        System.out.println("HomeServlet.doGet - pathInfo: " + pathInfo);
         
         // Nếu là /home hoặc /, hiển thị trang chủ (gộp home + shop)
-        if ("/home".equals(servletPath) || "/".equals(servletPath)) {
+        // Đảm bảo root URL luôn vào trang home
+        if ("/home".equals(servletPath) || "/".equals(servletPath) || 
+            (servletPath == null || servletPath.isEmpty())) {
+            System.out.println("HomeServlet: Routing to showHomePage()");
             showHomePage(request, response);
-        } else {
+        } else if ("/shop".equals(servletPath)) {
             // Nếu là /shop, hiển thị trang xem toàn bộ sản phẩm
+            System.out.println("HomeServlet: Routing to showProductList()");
             showProductList(request, response);
+        } else {
+            // Fallback: nếu không match, mặc định hiển thị trang chủ
+            System.out.println("HomeServlet: Unknown path, defaulting to showHomePage()");
+            showHomePage(request, response);
         }
     }
     
@@ -141,12 +164,13 @@ public class HomeServlet extends HttpServlet {
             // Lấy danh sách categories
             List<Category> categories = categoryService.getAllCategories();
             
-            // Lấy promotion có EndDate xa nhất trong số các promotion đang active để hiển thị countdown
+            // Lấy promotions đang active để hiển thị trong carousel
+            List<Promotion> activePromotions = new java.util.ArrayList<>();
             Promotion latestPromotion = null;
             try {
-                List<Promotion> activePromotions = promotionService.getActivePromotions();
+                activePromotions = promotionService.getActivePromotions();
                 if (activePromotions != null && !activePromotions.isEmpty()) {
-                    // Tìm promotion có EndDate xa nhất
+                    // Tìm promotion có EndDate xa nhất để hiển thị countdown
                     java.util.Date now = new java.util.Date();
                     for (Promotion promo : activePromotions) {
                         if (promo.isValid() && promo.getEndDate() != null) {
@@ -155,9 +179,47 @@ public class HomeServlet extends HttpServlet {
                             }
                         }
                     }
+                    // Giới hạn tối đa 5 promotions cho carousel
+                    if (activePromotions.size() > 5) {
+                        activePromotions = activePromotions.subList(0, 5);
+                    }
                 }
             } catch (Exception e) {
-                System.err.println("Error getting latest promotion for countdown: " + e.getMessage());
+                System.err.println("Error getting active promotions: " + e.getMessage());
+                e.printStackTrace();
+            }
+            
+            // Lấy sản phẩm gợi ý dựa trên lượt xem
+            List<Product> recommendedProducts = new java.util.ArrayList<>();
+            try {
+                HttpSession session = request.getSession();
+                User currentUser = (User) session.getAttribute("currentUser");
+                
+                // Nếu user đã đăng nhập, lấy gợi ý dựa trên lượt xem của user
+                if (currentUser != null) {
+                    recommendedProducts = productViewDAO.getRecommendedProductsByUserViews(
+                        currentUser.getUserID(), 12
+                    );
+                }
+                
+                // Nếu không có user hoặc không đủ sản phẩm, bổ sung bằng sản phẩm được xem nhiều nhất
+                if (recommendedProducts.size() < 12) {
+                    List<Product> mostViewed = productViewDAO.getMostViewedProducts(12);
+                    for (Product p : mostViewed) {
+                        boolean exists = false;
+                        for (Product existing : recommendedProducts) {
+                            if (existing.getProductID() == p.getProductID()) {
+                                exists = true;
+                                break;
+                            }
+                        }
+                        if (!exists && recommendedProducts.size() < 12) {
+                            recommendedProducts.add(p);
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("Error getting recommended products: " + e.getMessage());
                 e.printStackTrace();
             }
             
@@ -165,6 +227,7 @@ public class HomeServlet extends HttpServlet {
             request.setAttribute("featuredProducts", featuredProducts);
             request.setAttribute("bestSellingProducts", bestSellingProducts);
             request.setAttribute("newProducts", newProducts);
+            request.setAttribute("recommendedProducts", recommendedProducts);
             request.setAttribute("products", products);
             request.setAttribute("categories", categories);
             request.setAttribute("currentPage", pageNumber);
@@ -175,7 +238,8 @@ public class HomeServlet extends HttpServlet {
             request.setAttribute("categoryID", categoryID);
             request.setAttribute("sortBy", sortBy);
             request.setAttribute("sortOrder", sortOrder);
-            request.setAttribute("latestPromotion", latestPromotion); // Thêm promotion cho countdown
+            request.setAttribute("activePromotions", activePromotions); // Promotions cho carousel
+            request.setAttribute("latestPromotion", latestPromotion); // Promotion cho countdown
             
             // Forward đến JSP (home.jsp - trang chủ gộp home + shop)
             request.getRequestDispatcher("/views/store/home.jsp").forward(request, response);

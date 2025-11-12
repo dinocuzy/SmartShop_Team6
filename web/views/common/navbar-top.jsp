@@ -156,7 +156,7 @@
             <!-- Danh mục sản phẩm -->
             <a href="${pageContext.request.contextPath}/shop" class="navbar-top-link">
                 <i class="bi bi-list"></i>
-                <span>Danh mục sản phẩm</span>
+                <span>Tất cả sản phẩm</span>
             </a>
             
             <!-- Khuyến mãi (Dropdown) -->
@@ -230,6 +230,12 @@
         </div>
         
         <div class="navbar-top-right">
+            <!-- Số người đang online -->
+            <span class="navbar-top-link" id="onlineCountDisplay" style="cursor: default;">
+                <i class="bi bi-people-fill"></i>
+                <span>Đang online: <strong id="onlineCount">-</strong></span>
+            </span>
+            
             <!-- Hệ thống cửa hàng -->
             <a href="${pageContext.request.contextPath}/stores" class="navbar-top-link">
                 <i class="bi bi-shop"></i>
@@ -246,6 +252,34 @@
 </nav>
 
 <script>
+    // Cập nhật số người đang online
+    (function() {
+        const contextPath = '${pageContext.request.contextPath}';
+        const onlineCountElement = document.getElementById('onlineCount');
+        
+        function updateOnlineCount() {
+            fetch(contextPath + '/api/online/count')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && onlineCountElement) {
+                        onlineCountElement.textContent = data.count || 0;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching online count:', error);
+                    if (onlineCountElement) {
+                        onlineCountElement.textContent = '-';
+                    }
+                });
+        }
+        
+        // Cập nhật ngay khi load
+        updateOnlineCount();
+        
+        // Cập nhật mỗi 10 giây
+        setInterval(updateOnlineCount, 10000);
+    })();
+    
     // Function để scroll navbar (nếu menu quá dài trên mobile)
     function scrollNavLeft() {
         const navLeft = document.querySelector('.navbar-top-left');

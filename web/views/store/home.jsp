@@ -11,6 +11,74 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <!-- Define functions IMMEDIATELY in head to ensure they're available when onclick handlers are evaluated -->
     <script>
+        // Set context path
+        window.contextPath = '${pageContext.request.contextPath}';
+        
+        // Define addToCompare function immediately (before compare.js loads)
+        window.addToCompare = function(productID) {
+            if (!productID) {
+                alert('Lỗi: Không có ID sản phẩm');
+                return Promise.reject('ProductID is required');
+            }
+            
+            productID = parseInt(productID);
+            const STORAGE_KEY = 'compare_products';
+            const MAX_ITEMS = 2; // Chỉ so sánh 2 sản phẩm
+            
+            try {
+                // Get current list from localStorage
+                const stored = localStorage.getItem(STORAGE_KEY);
+                let productIDs = stored ? JSON.parse(stored) : [];
+                
+                // Check max items
+                if (productIDs.length >= MAX_ITEMS) {
+                    alert('Bạn chỉ có thể so sánh tối đa ' + MAX_ITEMS + ' sản phẩm. Vui lòng xóa một sản phẩm trước khi thêm mới.');
+                    return Promise.reject('Maximum compare items reached');
+                }
+                
+                // Check if already in list
+                if (productIDs.includes(productID)) {
+                    alert('Sản phẩm này đã có trong danh sách so sánh');
+                    return Promise.reject('Product already in compare list');
+                }
+                
+                // Add to localStorage immediately
+                productIDs.push(productID);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(productIDs));
+                
+                // Update UI if possible
+                const buttons = document.querySelectorAll('[data-compare-product-id="' + productID + '"]');
+                buttons.forEach(function(btn) {
+                    btn.classList.add('active');
+                    if (btn.classList.contains('action-icon')) {
+                        btn.style.color = '#28a745';
+                        btn.style.borderColor = '#28a745';
+                        btn.title = 'Đã thêm vào so sánh';
+                    }
+                });
+                
+                // Show alert
+                alert('Đã thêm sản phẩm vào danh sách so sánh');
+                
+                // Nếu đã có đủ 2 sản phẩm, tự động mở modal so sánh
+                if (productIDs.length === MAX_ITEMS) {
+                    // Đợi một chút để đảm bảo UI đã cập nhật
+                    setTimeout(function() {
+                        if (typeof window.showCompareModal === 'function') {
+                            window.showCompareModal();
+                        }
+                    }, 300);
+                }
+                
+                // Return success immediately
+                return Promise.resolve({ success: true, useLocalStorage: true });
+            } catch (e) {
+                console.error('Error in addToCompare:', e);
+                alert('Có lỗi xảy ra khi thêm sản phẩm vào danh sách so sánh');
+                return Promise.reject(e);
+            }
+        };
+        
         // Define openProductModal function early as placeholder
         // Will be fully implemented when productModal.jsp is loaded at end of body
         // For now, make it try to load the full implementation if available
@@ -947,6 +1015,9 @@
             display: flex;
             flex-direction: column;
             height: 100%;
+            position: relative;
+            z-index: 1;
+            /* Đảm bảo product card không bị chatbot che */
         }
         
         .product-card-home:hover {
@@ -1024,6 +1095,23 @@
             padding: 0.5rem;
             border-radius: 8px;
             font-weight: bold;
+            position: relative;
+            z-index: 2;
+            /* Z-index cao hơn để đảm bảo có thể click được */
+            pointer-events: auto;
+            /* Đảm bảo có thể click */
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .add-to-cart-btn:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+        }
+        
+        .add-to-cart-btn:active {
+            transform: translateY(0);
         }
         
         .product-discount-badge {
@@ -1054,6 +1142,9 @@
             background: #2c2c2c;
             display: flex;
             flex-direction: column;
+            position: relative;
+            z-index: 1;
+            /* Đảm bảo product card không bị chatbot che */
         }
         
         .product-card:hover {
@@ -1232,7 +1323,7 @@
                                      style="position: relative; overflow: hidden;">
                                     <div class="promo-card-bg-overlay"></div>
                                     <div class="promo-card-content" style="position: relative; z-index: 2;">
-                                        <h5 class="promo-card-title">${product.categoryName != null ? product.categoryName : 'SẢN PHẨM'}</h5>
+                                        <h5 class="promo-card-title">${product.productName != null ? product.productName : 'SẢN PHẨM'}</h5>
                                         <p class="promo-card-text">Khai trương cửa hàng - Giảm lên đến 30%</p>
                                         <p class="promo-card-price">
                                             Giá chỉ từ 
@@ -1309,11 +1400,11 @@
                 <div class="section-nav">
                     <a href="#" class="section-nav-link active">Sản phẩm gợi ý</a>
                     <span style="color: #4a4a4a;">•</span>
-                    <a href="${pageContext.request.contextPath}/shop?category=4" class="section-nav-link">Máy chơi game</a>
+                    <a href="${pageContext.request.contextPath}/shop?category=4" class="section-nav-link">Phụ Kiện</a>
                     <span style="color: #4a4a4a;">•</span>
-                    <a href="${pageContext.request.contextPath}/shop?category=5" class="section-nav-link">Máy tính bàn (PC)</a>
+                    <a href="${pageContext.request.contextPath}/shop?category=5" class="section-nav-link">Âm Thanh</a>
                     <span style="color: #4a4a4a;">•</span>
-                    <a href="${pageContext.request.contextPath}/shop?category=6" class="section-nav-link">Tai nghe</a>
+                    <a href="${pageContext.request.contextPath}/shop?category=6" class="section-nav-link">Smart Watch</a>
                     <a href="${pageContext.request.contextPath}/shop" class="section-nav-link" style="margin-left: 1rem;">
                         Xem thêm <i class="bi bi-chevron-right"></i>
                     </a>
@@ -1354,7 +1445,8 @@
                             </div>
                             <div class="product-status">Vừa mở bán</div>
                             <button class="btn add-to-cart-btn" 
-                                    onclick="addToCart(${product.productID}, '${pageContext.request.contextPath}/home')">
+                                    onclick="addToCart(${product.productID}, '${pageContext.request.contextPath}/home')"
+                                    style="position: relative; z-index: 3; pointer-events: auto; cursor: pointer;">
                                 Thêm vào giỏ
                             </button>
                         </div>
@@ -1468,22 +1560,32 @@
                                             </c:otherwise>
                                         </c:choose>
                                     </div>
-                                    <div class="d-grid gap-2">
+                                    <div class="d-grid gap-2" style="position: relative; z-index: 2; pointer-events: auto;">
                                         <c:if test="${product.stockStatus == 'InStock' && product.stock > 0}">
                                             <button class="btn btn-primary btn-sm" 
-                                                    onclick="addToCart(${product.productID}, '${pageContext.request.contextPath}/home')">
+                                                    onclick="addToCart(${product.productID}, '${pageContext.request.contextPath}/home')"
+                                                    style="position: relative; z-index: 3; pointer-events: auto; cursor: pointer;">
                                                 <i class="bi bi-cart-plus"></i> Thêm vào giỏ
                                             </button>
                                         </c:if>
-                                        <div class="btn-group" role="group">
+                                        <div class="btn-group" role="group" style="position: relative; z-index: 3; pointer-events: auto;">
                                             <button class="btn btn-outline-secondary btn-sm" 
                                                     onclick="openProductModal(${product.productID})"
-                                                    title="Xem chi tiết">
+                                                    title="Xem chi tiết"
+                                                    style="position: relative; z-index: 4; pointer-events: auto; cursor: pointer;">
                                                 <i class="bi bi-eye"></i> Xem
+                                            </button>
+                                            <button type="button" class="btn btn-outline-info btn-sm compare-btn" 
+                                                    data-compare-product-id="${product.productID}"
+                                                    onclick="if(typeof window.addToCompare === 'function'){window.addToCompare(${product.productID});}else{alert('Chức năng so sánh đang tải, vui lòng thử lại sau vài giây.');}"
+                                                    style="position: relative; z-index: 4; pointer-events: auto; cursor: pointer;"
+                                                    title="So sánh sản phẩm">
+                                                <i class="bi bi-arrow-left-right"></i>
                                             </button>
                                             <button class="btn btn-outline-danger btn-sm" 
                                                     onclick="toggleWishlist(${product.productID})"
-                                                    title="Thêm vào yêu thích">
+                                                    title="Thêm vào yêu thích"
+                                                    style="position: relative; z-index: 4; pointer-events: auto; cursor: pointer;">
                                                 <i class="bi bi-heart"></i>
                                             </button>
                                         </div>

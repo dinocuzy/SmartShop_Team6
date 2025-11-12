@@ -14,7 +14,15 @@
                     <i class="bi bi-person-badge me-2"></i>
                     <span>Nhân viên SmartShop</span>
                 </div>
-                <button type="button" class="btn-close btn-close-white"></button>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="chatbot-order-btn" id="chatbotOrderBtn" title="Đặt hàng" style="display: none;">
+                        <i class="bi bi-cart-check"></i>
+                    </button>
+                    <button type="button" class="chatbot-clear-btn" id="chatbotClearBtn" title="Xóa lịch sử chat">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                    <button type="button" class="btn-close btn-close-white"></button>
+                </div>
             </div>
             <div id="chatbotMessages" class="chatbot-messages">
                 <div class="chatbot-message bot-message">
@@ -31,6 +39,73 @@
                         onclick="if(typeof window.sendChatbotMessage==='function'){window.sendChatbotMessage();}else if(typeof window.sendChatbotMessageFull==='function'){window.sendChatbotMessageFull();}else{console.error('sendChatbotMessage not available');}">
                     <i class="bi bi-send"></i>
                 </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal đặt hàng từ chatbot -->
+    <div class="modal fade" id="chatbotOrderModal" tabindex="-1" aria-labelledby="chatbotOrderModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="chatbotOrderModalLabel">
+                        <i class="bi bi-cart-check me-2"></i>Đặt hàng
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="chatbotOrderError" class="alert alert-danger" style="display: none;"></div>
+                    <form id="chatbotOrderForm">
+                        <input type="hidden" name="action" value="placeOrder">
+                        
+                        <!-- Địa chỉ giao hàng -->
+                        <div class="mb-3">
+                            <label class="form-label"><i class="bi bi-geo-alt me-1"></i>Địa chỉ giao hàng <span class="text-danger">*</span></label>
+                            <select class="form-select" name="shippingAddressID" id="chatbotShippingAddressID" required>
+                                <option value="">-- Chọn địa chỉ --</option>
+                            </select>
+                            <div class="text-end mt-2">
+                                <a href="${pageContext.request.contextPath}/customer/profile" class="btn btn-sm btn-outline-primary" target="_blank">
+                                    <i class="bi bi-plus"></i> Thêm địa chỉ mới
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <!-- Địa chỉ thanh toán -->
+                        <div class="mb-3">
+                            <label class="form-label"><i class="bi bi-receipt me-1"></i>Địa chỉ thanh toán</label>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="chatbotSameAsShipping" checked>
+                                <label class="form-check-label" for="chatbotSameAsShipping">
+                                    Giống địa chỉ giao hàng
+                                </label>
+                            </div>
+                            <select class="form-select" name="billingAddressID" id="chatbotBillingAddressID">
+                                <option value="">-- Chọn địa chỉ --</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Phương thức thanh toán -->
+                        <div class="mb-3">
+                            <label class="form-label"><i class="bi bi-credit-card me-1"></i>Phương thức thanh toán <span class="text-danger">*</span></label>
+                            <select class="form-select" name="paymentMethodID" id="chatbotPaymentMethodID" required>
+                                <option value="">-- Chọn phương thức thanh toán --</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Ghi chú -->
+                        <div class="mb-3">
+                            <label class="form-label"><i class="bi bi-pencil me-1"></i>Ghi chú (tùy chọn)</label>
+                            <textarea class="form-control" name="note" id="chatbotOrderNote" rows="2" placeholder="Ghi chú cho đơn hàng..."></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-primary" id="chatbotPlaceOrderBtn">
+                        <i class="bi bi-check-circle me-1"></i>Đặt hàng
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -75,17 +150,68 @@
                     const messageElements = messagesContainer.querySelectorAll('.chatbot-message');
                     const messages = [];
                     
-                    messageElements.forEach(function(msgEl) {
+                    // Lưu messages theo thứ tự, kiểm tra product card message riêng
+                    for (let i = 0; i < messageElements.length; i++) {
+                        const msgEl = messageElements[i];
+                        
+                        // Bỏ qua loading messages
+                        if (msgEl.id && msgEl.id.startsWith('loading-message-')) {
+                            continue;
+                        }
+                        
+                        // Bỏ qua product card message (sẽ được xử lý cùng với message text trước đó)
+                        if (msgEl.classList.contains('chatbot-product-card-message')) {
+                            continue;
+                        }
+                        
                         const contentSpan = msgEl.querySelector('.message-content span');
                         if (contentSpan) {
                             const text = contentSpan.textContent || contentSpan.innerText;
                             const type = msgEl.classList.contains('user-message') ? 'user' : 'bot';
-                            // Bỏ qua loading messages
-                            if (!msgEl.id || !msgEl.id.startsWith('loading-message-')) {
-                                messages.push({ text: text, type: type });
+                            
+                            // Kiểm tra xem message tiếp theo có phải là product card message không
+                            let productData = null;
+                            if (i + 1 < messageElements.length) {
+                                const nextMsgEl = messageElements[i + 1];
+                                if (nextMsgEl.classList.contains('chatbot-product-card-message')) {
+                                    // Lấy productID từ data attribute
+                                    const productID = nextMsgEl.getAttribute('data-product-id');
+                                    
+                                    if (productID) {
+                                        const productCard = nextMsgEl.querySelector('.chatbot-product-card');
+                                        if (productCard) {
+                                            // Lấy thông tin product card
+                                            const productNameEl = productCard.querySelector('.chatbot-product-name');
+                                            const productPriceEl = productCard.querySelector('.chatbot-product-price');
+                                            const productImageEl = productCard.querySelector('.chatbot-product-image');
+                                            const stockBadgeEl = productCard.querySelector('.chatbot-product-stock-badge');
+                                            
+                                            // Parse giá từ text (loại bỏ ký tự không phải số)
+                                            let price = 0;
+                                            if (productPriceEl) {
+                                                const priceText = productPriceEl.textContent.replace(/[^\d]/g, '');
+                                                price = parseFloat(priceText) || 0;
+                                            }
+                                            
+                                            productData = {
+                                                productID: parseInt(productID),
+                                                productName: productNameEl ? productNameEl.textContent.trim() : '',
+                                                productPrice: price,
+                                                productImageUrl: productImageEl ? productImageEl.src : '',
+                                                productStockStatus: stockBadgeEl && stockBadgeEl.textContent.includes('Còn') ? 'InStock' : 'OutOfStock'
+                                            };
+                                        }
+                                    }
+                                }
                             }
+                            
+                            messages.push({ 
+                                text: text, 
+                                type: type,
+                                productData: productData
+                            });
                         }
-                    });
+                    }
                     
                     localStorage.setItem(STORAGE_KEY_MESSAGES, JSON.stringify(messages));
                 } catch (e) {
@@ -106,7 +232,7 @@
                             
                             // Restore messages (skip save để tránh loop)
                             messages.forEach(function(msg) {
-                                addMessage(msg.text, msg.type, true);
+                                addMessage(msg.text, msg.type, true, msg.productData || null);
                             });
                             // Save một lần sau khi load xong
                             setTimeout(saveMessagesToStorage, 100);
@@ -117,8 +243,41 @@
                 }
             }
             
+            // Xóa lịch sử chat
+            function clearChatHistory() {
+                if (confirm('Bạn có chắc chắn muốn xóa toàn bộ lịch sử chat không?')) {
+                    try {
+                        // Xóa messages từ localStorage
+                        localStorage.removeItem(STORAGE_KEY_MESSAGES);
+                        
+                        // Xóa conversation ID
+                        localStorage.removeItem(STORAGE_KEY_CONVERSATION_ID);
+                        
+                        // Tạo conversation ID mới
+                        window.chatbotConversationId = 'global_' + Date.now();
+                        localStorage.setItem(STORAGE_KEY_CONVERSATION_ID, window.chatbotConversationId);
+                        
+                        // Xóa messages trên UI
+                        const messagesContainer = document.getElementById('chatbotMessages');
+                        if (messagesContainer) {
+                            messagesContainer.innerHTML = '';
+                            // Thêm message mặc định
+                            const defaultMessage = document.createElement('div');
+                            defaultMessage.className = 'chatbot-message bot-message';
+                            defaultMessage.innerHTML = '<div class="message-content"><i class="bi bi-person-badge"></i><span>Xin chào! Tôi là nhân viên SmartShop. Bạn cần hỗ trợ gì ạ?</span></div>';
+                            messagesContainer.appendChild(defaultMessage);
+                        }
+                        
+                        console.log('Chat history cleared');
+                    } catch (e) {
+                        console.error('Error clearing chat history:', e);
+                        alert('Có lỗi xảy ra khi xóa lịch sử chat. Vui lòng thử lại.');
+                    }
+                }
+            }
+            
             // Helper function: addMessage
-            function addMessage(text, type, skipSave) {
+            function addMessage(text, type, skipSave, productData) {
                 const messagesContainer = document.getElementById('chatbotMessages');
                 if (!messagesContainer) return;
                 
@@ -148,6 +307,142 @@
                 
                 messageDiv.appendChild(contentDiv);
                 messagesContainer.appendChild(messageDiv);
+                
+                // Nếu có productData, tạo product card riêng bên dưới message
+                if (type === 'bot' && productData && productData.productID) {
+                    const contextPath = '${pageContext.request.contextPath}';
+                    const productID = productData.productID;
+                    const productName = productData.productName || 'Sản phẩm';
+                    const productPrice = productData.productPrice || 0;
+                    const productStock = productData.productStock || 0;
+                    const productStockStatus = productData.productStockStatus || '';
+                    const productImageUrl = productData.productImageUrl || '';
+                    
+                    const isInStock = productStockStatus === 'InStock' && productStock > 0;
+                    
+                    // Format giá tiền
+                    const formattedPrice = new Intl.NumberFormat('vi-VN', {
+                        style: 'currency',
+                        currency: 'VND'
+                    }).format(productPrice);
+                    
+                    // Tạo product card message riêng
+                    const productCardMessageDiv = document.createElement('div');
+                    productCardMessageDiv.className = 'chatbot-message bot-message chatbot-product-card-message';
+                    productCardMessageDiv.setAttribute('data-product-id', productID);
+                    
+                    const productCardDiv = document.createElement('div');
+                    productCardDiv.className = 'chatbot-product-card';
+                    
+                    // Hình ảnh sản phẩm
+                    const imageWrapper = document.createElement('div');
+                    imageWrapper.className = 'chatbot-product-image-wrapper';
+                    const productImage = document.createElement('img');
+                    productImage.className = 'chatbot-product-image';
+                    productImage.src = productImageUrl || (contextPath + '/images/placeholder.png');
+                    productImage.alt = productName;
+                    productImage.onerror = function() {
+                        this.src = contextPath + '/images/placeholder.png';
+                    };
+                    imageWrapper.appendChild(productImage);
+                    productCardDiv.appendChild(imageWrapper);
+                    
+                    // Thông tin sản phẩm
+                    const productInfoDiv = document.createElement('div');
+                    productInfoDiv.className = 'chatbot-product-info';
+                    
+                    // Tên sản phẩm
+                    const productNameDiv = document.createElement('div');
+                    productNameDiv.className = 'chatbot-product-name';
+                    productNameDiv.textContent = productName;
+                    productInfoDiv.appendChild(productNameDiv);
+                    
+                    // Giá và stock status cùng một dòng
+                    const priceStockDiv = document.createElement('div');
+                    priceStockDiv.className = 'chatbot-product-price-stock';
+                    priceStockDiv.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin: 0.25rem 0;';
+                    
+                    // Giá
+                    const productPriceDiv = document.createElement('div');
+                    productPriceDiv.className = 'chatbot-product-price';
+                    productPriceDiv.textContent = formattedPrice;
+                    priceStockDiv.appendChild(productPriceDiv);
+                    
+                    // Stock status
+                    if (isInStock) {
+                        const stockBadge = document.createElement('span');
+                        stockBadge.className = 'chatbot-product-stock-badge';
+                        stockBadge.textContent = 'Còn hàng';
+                        priceStockDiv.appendChild(stockBadge);
+                    } else {
+                        const stockBadge = document.createElement('span');
+                        stockBadge.className = 'chatbot-product-stock-badge out-of-stock';
+                        stockBadge.textContent = 'Hết hàng';
+                        priceStockDiv.appendChild(stockBadge);
+                    }
+                    
+                    productInfoDiv.appendChild(priceStockDiv);
+                    
+                    // Action buttons
+                    const actionButtonsDiv = document.createElement('div');
+                    actionButtonsDiv.className = 'chatbot-product-actions';
+                    
+                    // Nút "Xem chi tiết"
+                    const viewDetailBtn = document.createElement('button');
+                    viewDetailBtn.className = 'chatbot-action-btn chatbot-view-btn';
+                    viewDetailBtn.innerHTML = '<i class="bi bi-eye"></i> Xem';
+                    viewDetailBtn.onclick = function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (typeof window.openProductModal === 'function') {
+                            window.openProductModal(productID);
+                        } else if (typeof window.openProductModalFull === 'function') {
+                            window.openProductModalFull(productID);
+                        } else {
+                            window.open(contextPath + '/product?id=' + productID, '_blank');
+                        }
+                    };
+                    actionButtonsDiv.appendChild(viewDetailBtn);
+                    
+                    // Nút "Thêm vào giỏ" (chỉ hiển thị nếu còn hàng)
+                    if (isInStock) {
+                        const addToCartBtn = document.createElement('button');
+                        addToCartBtn.className = 'chatbot-action-btn chatbot-add-cart-btn';
+                        addToCartBtn.innerHTML = '<i class="bi bi-cart-plus"></i> Thêm';
+                        addToCartBtn.onclick = function(e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (typeof window.addToCart === 'function') {
+                                window.addToCart(productID, contextPath + '/home');
+                            } else {
+                                // Fallback: submit form
+                                const form = document.createElement('form');
+                                form.method = 'POST';
+                                form.action = contextPath + '/cart';
+                                const actionInput = document.createElement('input');
+                                actionInput.type = 'hidden';
+                                actionInput.name = 'action';
+                                actionInput.value = 'add';
+                                form.appendChild(actionInput);
+                                const productIDInput = document.createElement('input');
+                                productIDInput.type = 'hidden';
+                                productIDInput.name = 'productID';
+                                productIDInput.value = productID;
+                                form.appendChild(productIDInput);
+                                document.body.appendChild(form);
+                                form.submit();
+                            }
+                        };
+                        actionButtonsDiv.appendChild(addToCartBtn);
+                    }
+                    
+                    productInfoDiv.appendChild(actionButtonsDiv);
+                    productCardDiv.appendChild(productInfoDiv);
+                    productCardMessageDiv.appendChild(productCardDiv);
+                    
+                    // Thêm product card message vào container (sau message text)
+                    messagesContainer.appendChild(productCardMessageDiv);
+                }
                 
                 setTimeout(() => {
                     messagesContainer.scrollTo({
@@ -235,7 +530,20 @@
                         botMessage = botMessage.replace(/\[SEARCH_PRODUCTS:\s*.+?\]/gi, '').trim();
                         
                         if (botMessage && botMessage.length > 0) {
-                            addMessage(botMessage, 'bot');
+                            // Kiểm tra xem có productID trong response không
+                            let productData = null;
+                            if (data.productID) {
+                                productData = {
+                                    productID: data.productID,
+                                    productName: data.productName || '',
+                                    productPrice: data.productPrice || 0,
+                                    productStock: data.productStock || 0,
+                                    productStockStatus: data.productStockStatus || '',
+                                    productImageUrl: data.productImageUrl || ''
+                                };
+                            }
+                            
+                            addMessage(botMessage, 'bot', false, productData);
                             // Save conversation ID và messages
                             localStorage.setItem(STORAGE_KEY_CONVERSATION_ID, window.chatbotConversationId);
                             saveMessagesToStorage();
@@ -283,6 +591,217 @@
             console.log('✓✓✓ sendChatbotMessage FULL IMPLEMENTATION defined and exposed IMMEDIATELY after HTML ✓✓✓');
             console.log('✓ Function type:', typeof window.sendChatbotMessage);
             console.log('✓ Ready to handle button clicks immediately!');
+            
+            // ============================================
+            // CHỨC NĂNG ĐẶT HÀNG TỪ CHATBOT
+            // ============================================
+            
+            // Kiểm tra và hiển thị nút đặt hàng
+            function checkAndShowOrderButton() {
+                const orderBtn = document.getElementById('chatbotOrderBtn');
+                if (!orderBtn) return;
+                
+                // Kiểm tra xem user đã đăng nhập và có sản phẩm trong giỏ hàng không
+                const contextPath = '${pageContext.request.contextPath}';
+                fetch(contextPath + '/api/cart/check', {
+                    method: 'GET',
+                    credentials: 'same-origin'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.hasItems && data.isLoggedIn) {
+                        orderBtn.style.display = 'flex';
+                    } else {
+                        orderBtn.style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking cart:', error);
+                    orderBtn.style.display = 'none';
+                });
+            }
+            
+            // Load địa chỉ và phương thức thanh toán
+            function loadOrderData() {
+                const contextPath = '${pageContext.request.contextPath}';
+                
+                // Load địa chỉ
+                fetch(contextPath + '/api/addresses', {
+                    method: 'GET',
+                    credentials: 'same-origin'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const shippingSelect = document.getElementById('chatbotShippingAddressID');
+                    const billingSelect = document.getElementById('chatbotBillingAddressID');
+                    
+                    if (shippingSelect && billingSelect && data.addresses) {
+                        // Clear options
+                        shippingSelect.innerHTML = '<option value="">-- Chọn địa chỉ --</option>';
+                        billingSelect.innerHTML = '<option value="">-- Chọn địa chỉ --</option>';
+                        
+                        // Add addresses
+                        data.addresses.forEach(address => {
+                            const optionText = `${address.fullName} - ${address.phone} - ${address.fullAddress}${address.isDefault ? ' (Mặc định)' : ''}`;
+                            const shippingOption = new Option(optionText, address.addressID, address.isDefault, address.isDefault);
+                            const billingOption = new Option(optionText, address.addressID);
+                            shippingSelect.add(shippingOption);
+                            billingSelect.add(billingOption);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading addresses:', error);
+                });
+                
+                // Load phương thức thanh toán
+                fetch(contextPath + '/api/payment-methods', {
+                    method: 'GET',
+                    credentials: 'same-origin'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const paymentSelect = document.getElementById('chatbotPaymentMethodID');
+                    if (paymentSelect && data.paymentMethods) {
+                        paymentSelect.innerHTML = '<option value="">-- Chọn phương thức thanh toán --</option>';
+                        data.paymentMethods.forEach(method => {
+                            const option = new Option(method.methodName, method.paymentMethodID);
+                            paymentSelect.add(option);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading payment methods:', error);
+                });
+            }
+            
+            // Xử lý checkbox "Giống địa chỉ giao hàng"
+            function setupSameAsShipping() {
+                const checkbox = document.getElementById('chatbotSameAsShipping');
+                const shippingSelect = document.getElementById('chatbotShippingAddressID');
+                const billingSelect = document.getElementById('chatbotBillingAddressID');
+                
+                if (checkbox && shippingSelect && billingSelect) {
+                    checkbox.addEventListener('change', function() {
+                        if (this.checked) {
+                            billingSelect.value = shippingSelect.value;
+                            billingSelect.disabled = true;
+                        } else {
+                            billingSelect.disabled = false;
+                        }
+                    });
+                    
+                    // Cập nhật khi shipping address thay đổi
+                    shippingSelect.addEventListener('change', function() {
+                        if (checkbox.checked) {
+                            billingSelect.value = this.value;
+                        }
+                    });
+                }
+            }
+            
+            // Xử lý đặt hàng
+            function handlePlaceOrder() {
+                const form = document.getElementById('chatbotOrderForm');
+                const errorDiv = document.getElementById('chatbotOrderError');
+                const placeOrderBtn = document.getElementById('chatbotPlaceOrderBtn');
+                
+                if (!form || !errorDiv || !placeOrderBtn) return;
+                
+                // Validate form
+                const shippingAddressID = document.getElementById('chatbotShippingAddressID').value;
+                const paymentMethodID = document.getElementById('chatbotPaymentMethodID').value;
+                
+                if (!shippingAddressID || !paymentMethodID) {
+                    errorDiv.textContent = 'Vui lòng chọn địa chỉ giao hàng và phương thức thanh toán';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                
+                // Disable button
+                placeOrderBtn.disabled = true;
+                placeOrderBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang xử lý...';
+                errorDiv.style.display = 'none';
+                
+                // Get form data
+                const formData = new FormData(form);
+                
+                // Submit order
+                const contextPath = '${pageContext.request.contextPath}';
+                fetch(contextPath + '/checkout', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    body: formData
+                })
+                .then(response => {
+                    if (response.redirected) {
+                        // Redirect to order confirmation page
+                        window.location.href = response.url;
+                    } else {
+                        return response.text();
+                    }
+                })
+                .then(data => {
+                    if (data) {
+                        // Check if there's an error
+                        if (data.includes('errorMessage') || data.includes('error')) {
+                            errorDiv.textContent = 'Có lỗi xảy ra khi đặt hàng. Vui lòng thử lại.';
+                            errorDiv.style.display = 'block';
+                            placeOrderBtn.disabled = false;
+                            placeOrderBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Đặt hàng';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error placing order:', error);
+                    errorDiv.textContent = 'Không thể kết nối đến server. Vui lòng thử lại sau.';
+                    errorDiv.style.display = 'block';
+                    placeOrderBtn.disabled = false;
+                    placeOrderBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Đặt hàng';
+                });
+            }
+            
+            // Setup event listeners
+            function setupOrderButton() {
+                const orderBtn = document.getElementById('chatbotOrderBtn');
+                const orderModal = document.getElementById('chatbotOrderModal');
+                const placeOrderBtn = document.getElementById('chatbotPlaceOrderBtn');
+                
+                if (orderBtn && orderModal) {
+                    orderBtn.addEventListener('click', function() {
+                        // Load data và mở modal
+                        loadOrderData();
+                        const modal = new bootstrap.Modal(orderModal);
+                        modal.show();
+                    });
+                }
+                
+                if (orderModal) {
+                    orderModal.addEventListener('show.bs.modal', function() {
+                        loadOrderData();
+                        setupSameAsShipping();
+                    });
+                }
+                
+                if (placeOrderBtn) {
+                    placeOrderBtn.addEventListener('click', handlePlaceOrder);
+                }
+            }
+            
+            // Initialize order button functionality
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    checkAndShowOrderButton();
+                    setupOrderButton();
+                    // Check lại mỗi 5 giây
+                    setInterval(checkAndShowOrderButton, 5000);
+                });
+            } else {
+                checkAndShowOrderButton();
+                setupOrderButton();
+                // Check lại mỗi 5 giây
+                setInterval(checkAndShowOrderButton, 5000);
+            }
         })();
     </script>
 
@@ -298,8 +817,8 @@
             height: auto;
             max-width: 400px;
             max-height: none;
-            z-index: 1051;
-            /* Cao hơn header (1050) nhưng thấp hơn modal (1055) để không chặn modal */
+            z-index: 1100;
+            /* Cao hơn navbar-top (1081) và header (1080) để không bị che */
             pointer-events: none;
             /* Không chặn click ở container */
             margin: 0;
@@ -326,8 +845,8 @@
             box-shadow: 0 4px 20px rgba(220, 53, 69, 0.5) !important;
             transition: transform 0.3s, box-shadow 0.3s !important;
             position: relative !important;
-            z-index: 1053 !important;
-            /* Cao hơn widget container và header để đảm bảo button luôn clickable */
+            z-index: 1102 !important;
+            /* Cao hơn widget container (1100) và navbar (1081) để đảm bảo button luôn clickable */
             pointer-events: all !important;
             /* Đảm bảo có thể click */
             user-select: none !important;
@@ -376,15 +895,15 @@
             display: none;
             flex-direction: column;
             overflow: hidden;
-            z-index: 1052;
-            /* Cao hơn header (1050) nhưng vẫn thấp hơn modal (1055) để không chặn modal */
+            z-index: 1101;
+            /* Cao hơn widget container (1100) và navbar (1081) để không bị che */
             visibility: hidden;
             opacity: 0;
             transform: translateY(20px);
             transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease;
         }
         
-        /* Đảm bảo chatbot không bị header che khi màn hình nhỏ */
+        /* Đảm bảo chatbot không bị header/navbar che khi màn hình nhỏ */
         @media (max-height: 900px) {
             #chatbotWidget .chatbot-window {
                 max-height: calc(100vh - 160px) !important;
@@ -411,6 +930,19 @@
             #chatbotWidget .chatbot-window {
                 max-height: calc(100vh - 130px) !important;
                 height: 450px !important;
+            }
+        }
+        
+        /* Đảm bảo chatbot không bị navbar che - điều chỉnh bottom khi cần */
+        @media (max-width: 768px) {
+            #chatbotWidget {
+                bottom: 10px;
+                right: 10px;
+            }
+            
+            #chatbotWidget .chatbot-window {
+                bottom: 70px;
+                max-height: calc(100vh - 200px) !important;
             }
         }
         
@@ -462,6 +994,66 @@
         #chatbotWidget .chatbot-header span {
             font-weight: 600;
             font-size: 1rem;
+        }
+        
+        #chatbotWidget .chatbot-clear-btn {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+            padding: 0;
+        }
+        
+        #chatbotWidget .chatbot-clear-btn:hover {
+            background: rgba(220, 53, 69, 0.8);
+            border-color: #dc3545;
+            transform: scale(1.1);
+        }
+        
+        #chatbotWidget .chatbot-clear-btn:active {
+            transform: scale(0.95);
+        }
+        
+        #chatbotWidget .chatbot-order-btn {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1rem;
+            padding: 0;
+        }
+        
+        #chatbotWidget .chatbot-order-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.1);
+        }
+        
+        #chatbotWidget .chatbot-order-btn:active {
+            transform: scale(0.95);
+        }
+        
+        /* Modal đặt hàng từ chatbot - z-index cao hơn chatbot và navbar */
+        #chatbotOrderModal {
+            z-index: 1110 !important;
+        }
+        
+        #chatbotOrderModal .modal-backdrop {
+            z-index: 1109 !important;
         }
 
         #chatbotWidget .chatbot-messages {
@@ -628,6 +1220,176 @@
             border-top-color: #dc3545;
             border-radius: 50%;
             animation: spin 1s linear infinite;
+        }
+        
+        /* Product card message riêng - nằm dưới message text */
+        #chatbotWidget .chatbot-product-card-message {
+            margin-top: 0.5rem;
+            max-width: 85%;
+            align-self: flex-start;
+        }
+        
+        /* Product card trong chatbot messages - nhỏ hơn */
+        #chatbotWidget .chatbot-product-card {
+            background: #2d2d2d;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #444;
+            display: flex;
+            flex-direction: row;
+            max-width: 100%;
+            position: relative;
+            z-index: 10;
+            pointer-events: auto;
+            gap: 0.75rem;
+        }
+        
+        #chatbotWidget .chatbot-product-image-wrapper {
+            width: 100px;
+            min-width: 100px;
+            height: 100px;
+            overflow: hidden;
+            background: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            border-radius: 8px;
+            flex-shrink: 0;
+        }
+        
+        #chatbotWidget .chatbot-product-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            transition: transform 0.3s;
+        }
+        
+        #chatbotWidget .chatbot-product-card:hover .chatbot-product-image {
+            transform: scale(1.05);
+        }
+        
+        #chatbotWidget .chatbot-product-info {
+            padding: 0.5rem 0.75rem 0.5rem 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.375rem;
+            flex: 1;
+            min-width: 0;
+        }
+        
+        #chatbotWidget .chatbot-product-name {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #ffffff;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-height: 2.2rem;
+            max-height: 2.2rem;
+        }
+        
+        #chatbotWidget .chatbot-product-price-stock {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        #chatbotWidget .chatbot-product-price {
+            font-size: 1rem;
+            font-weight: bold;
+            color: #dc3545;
+            margin: 0;
+        }
+        
+        #chatbotWidget .chatbot-product-stock-badge {
+            display: inline-block;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            background: #28a745;
+            color: #ffffff;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        
+        #chatbotWidget .chatbot-product-stock-badge.out-of-stock {
+            background: #6c757d;
+        }
+        
+        /* Product action buttons trong chatbot messages */
+        #chatbotWidget .chatbot-product-actions {
+            margin-top: 0.25rem;
+            display: flex;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+        }
+        
+        #chatbotWidget .chatbot-action-btn {
+            flex: 1;
+            min-width: 80px;
+            padding: 0.4rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            position: relative;
+            z-index: 11;
+            pointer-events: auto;
+        }
+        
+        #chatbotWidget .chatbot-view-btn {
+            background: #4a4a4a;
+            color: #ffffff;
+            border: 1px solid #6a6a6a;
+        }
+        
+        #chatbotWidget .chatbot-view-btn:hover {
+            background: #5a5a5a;
+            border-color: #dc3545;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(220, 53, 69, 0.3);
+        }
+        
+        #chatbotWidget .chatbot-add-cart-btn {
+            background: linear-gradient(135deg, #dc3545 0%, #ff6b35 100%);
+            color: #ffffff;
+            border: 1px solid #dc3545;
+        }
+        
+        #chatbotWidget .chatbot-add-cart-btn:hover {
+            background: linear-gradient(135deg, #c82333 0%, #e55a2b 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(220, 53, 69, 0.4);
+        }
+        
+        #chatbotWidget .chatbot-action-btn:active {
+            transform: translateY(0);
+        }
+        
+        /* Responsive cho product card */
+        @media (max-width: 400px) {
+            #chatbotWidget .chatbot-product-card {
+                flex-direction: column;
+            }
+            
+            #chatbotWidget .chatbot-product-image-wrapper {
+                width: 100%;
+                height: 120px;
+            }
         }
 
         @keyframes spin {
@@ -899,8 +1661,9 @@
                 }
             }
 
-            // Setup close button handler - CHỈ 1 LẦN khi DOM ready
-            function setupCloseButton() {
+            // Setup close button và clear button handler - CHỈ 1 LẦN khi DOM ready
+            function setupHeaderButtons() {
+                // Setup close button
                 const closeButton = document.querySelector('#chatbotWidget .chatbot-header .btn-close');
                 if (closeButton && !closeButton.dataset.buttonInitialized) {
                     closeButton.dataset.buttonInitialized = 'true';
@@ -914,15 +1677,27 @@
                         return false;
                     };
                 }
+                
+                // Setup clear button
+                const clearButton = document.getElementById('chatbotClearBtn');
+                if (clearButton && !clearButton.dataset.buttonInitialized) {
+                    clearButton.dataset.buttonInitialized = 'true';
+                    clearButton.onclick = function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        clearChatHistory();
+                        return false;
+                    };
+                }
             }
             
-            // Khởi tạo close button khi DOM ready
+            // Khởi tạo buttons khi DOM ready
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', function() {
-                    setupCloseButton();
+                    setupHeaderButtons();
                 });
             } else {
-                setupCloseButton();
+                setupHeaderButtons();
             }
 
         // Final check: ensure all functions are always exposed

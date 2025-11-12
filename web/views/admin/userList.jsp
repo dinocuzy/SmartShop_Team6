@@ -284,7 +284,7 @@
     <div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <form method="post" action="${pageContext.request.contextPath}/admin/users" id="userForm">
+                <form method="post" action="${pageContext.request.contextPath}/admin/users" id="userForm" novalidate>
                     <input type="hidden" name="action" value="save">
                     <input type="hidden" name="userID" id="modalUserID">
                     
@@ -324,7 +324,7 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="modalRoleID" class="form-label">Vai trò <span class="text-danger">*</span></label>
-                                <select class="form-select" id="modalRoleID" name="roleID" required>
+                                <select class="form-select" id="modalRoleID" name="roleID">
                                     <option value="">-- Chọn vai trò --</option>
                                     <c:forEach var="role" items="${roles}">
                                         <option value="${role.roleID}">${role.roleName}</option>
@@ -343,13 +343,13 @@
                             </div>
                         </div>
                         
-                        <!-- Address Section (chỉ hiển thị khi edit) -->
-                        <div id="addressSection" style="display: none;">
+                        <!-- Address Section -->
+                        <div id="addressSection">
                             <hr class="my-4">
                             <h6 class="mb-3"><i class="bi bi-geo-alt"></i> Địa chỉ</h6>
                             
-                            <!-- Select Address to Edit -->
-                            <div class="mb-3">
+                            <!-- Select Address to Edit (chỉ hiển thị khi edit và có địa chỉ) -->
+                            <div class="mb-3" id="addressSelectContainer" style="display: none;">
                                 <label for="addressSelect" class="form-label">Chọn địa chỉ để chỉnh sửa:</label>
                                 <select class="form-select" id="addressSelect" onchange="loadAddressData()">
                                     <option value="0">-- Thêm địa chỉ mới --</option>
@@ -391,7 +391,7 @@
                             <div class="mb-3">
                                 <label for="modalAddressLine1" class="form-label">Địa chỉ dòng 1 <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" id="modalAddressLine1" name="addressLine1" 
-                                       placeholder="Số nhà, tên đường" required>
+                                       placeholder="Số nhà, tên đường">
                             </div>
                             
                             <div class="mb-3">
@@ -412,7 +412,7 @@
                                 <div class="col-md-4 mb-3">
                                     <label for="modalAddressCity" class="form-label">Thành phố/Tỉnh <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="modalAddressCity" name="addressCity" 
-                                           placeholder="Thành phố/Tỉnh" required>
+                                           placeholder="Thành phố/Tỉnh">
                                 </div>
                             </div>
                             
@@ -447,7 +447,7 @@
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                             <i class="bi bi-x-circle"></i> Hủy
                         </button>
-                        <button type="submit" class="btn btn-primary">
+                        <button type="submit" class="btn btn-primary" id="saveUserButton">
                             <i class="bi bi-save"></i> Lưu
                         </button>
                     </div>
@@ -458,7 +458,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        function openAddModal() {
+        function openAddModal(resetForm = true) {
             try {
                 const modalElement = document.getElementById('userModal');
                 if (!modalElement) {
@@ -467,19 +467,41 @@
                     return;
                 }
                 document.getElementById('userModalLabel').innerHTML = '<i class="bi bi-people"></i> Thêm người dùng mới';
-                document.getElementById('userForm').reset();
-                document.getElementById('modalUserID').value = '';
-                document.getElementById('modalIsActive').checked = true;
+                
+                // Chỉ reset form nếu không có lỗi (để giữ lại giá trị khi có lỗi)
+                if (resetForm) {
+                    document.getElementById('userForm').reset();
+                    document.getElementById('modalUserID').value = '';
+                    document.getElementById('modalIsActive').checked = true;
+                }
+                
                 document.getElementById('passwordRequired').style.display = 'inline';
                 document.getElementById('passwordHint').textContent = 'Mật khẩu là bắt buộc cho người dùng mới';
                 document.getElementById('modalPasswordHash').required = true;
-                // Ẩn phần address khi thêm mới
-                document.getElementById('addressSection').style.display = 'none';
-                const modal = bootstrap.Modal.getInstance(modalElement);
+                
+                // Hiển thị phần address khi thêm mới (giống form edit)
+                document.getElementById('addressSection').style.display = 'block';
+                // Ẩn dropdown chọn địa chỉ khi thêm mới (vì chưa có địa chỉ)
+                document.getElementById('addressSelectContainer').style.display = 'none';
+                // Reset các trường địa chỉ
+                document.getElementById('modalAddressID').value = '';
+                document.getElementById('modalAddressFullName').value = '';
+                document.getElementById('modalAddressPhone').value = '';
+                document.getElementById('modalAddressLine1').value = '';
+                document.getElementById('modalAddressLine2').value = '';
+                document.getElementById('modalAddressWard').value = '';
+                document.getElementById('modalAddressDistrict').value = '';
+                document.getElementById('modalAddressCity').value = '';
+                document.getElementById('modalAddressCountry').value = 'Vietnam';
+                document.getElementById('modalAddressPostalCode').value = '';
+                document.getElementById('modalAddressIsDefault').checked = false;
+                
+                // Đảm bảo modal luôn được hiển thị
+                let modal = bootstrap.Modal.getInstance(modalElement);
                 if (!modal) {
-                    const newModal = new bootstrap.Modal(modalElement);
-                    newModal.show();
+                    modal = new bootstrap.Modal(modalElement);
                 }
+                modal.show();
             } catch (error) {
                 console.error('Lỗi khi mở modal thêm mới:', error);
                 alert('Có lỗi xảy ra khi mở form thêm mới!');
@@ -534,9 +556,14 @@
                             addressSection.style.display = 'block';
                         }
                         
-                        // Load địa chỉ mặc định nếu có (chọn địa chỉ đầu tiên hoặc địa chỉ default)
+                        // Hiển thị dropdown chọn địa chỉ khi edit (nếu có địa chỉ)
+                        const addressSelectContainer = document.getElementById('addressSelectContainer');
                         const addressSelect = document.getElementById('addressSelect');
                         if (addressSelect && addressSelect.options.length > 1) {
+                            // Có địa chỉ, hiển thị dropdown
+                            if (addressSelectContainer) {
+                                addressSelectContainer.style.display = 'block';
+                            }
                             // Tìm địa chỉ default trước, nếu không có thì chọn địa chỉ đầu tiên
                             let defaultAddressOption = null;
                             for (let i = 1; i < addressSelect.options.length; i++) {
@@ -553,9 +580,17 @@
                             }
                             loadAddressData();
                         } else if (addressSelect) {
-                            // Nếu không có địa chỉ nào, chọn "Thêm địa chỉ mới"
+                            // Nếu không có địa chỉ nào, ẩn dropdown và reset form
+                            if (addressSelectContainer) {
+                                addressSelectContainer.style.display = 'none';
+                            }
                             addressSelect.value = '0';
                             loadAddressData();
+                        } else {
+                            // Không có dropdown, ẩn container
+                            if (addressSelectContainer) {
+                                addressSelectContainer.style.display = 'none';
+                            }
                         }
                         
                         // Mở modal - kiểm tra xem Bootstrap có sẵn sàng chưa
@@ -636,7 +671,7 @@
             });
         }, 5000);
 
-        // Auto-open modal if parameter is present
+        // Auto-open modal if parameter is present or if there's an error in add mode
         window.addEventListener('DOMContentLoaded', function() {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('autoOpenModal') === 'add') {
@@ -644,7 +679,371 @@
                     openAddModal();
                 }, 300);
             }
+            
+            // Tự động mở modal nếu có lỗi và đang ở chế độ add (không reset form để giữ lại giá trị)
+            <c:if test="${not empty errorMessage && (action == 'add' || empty action)}">
+                setTimeout(function() {
+                    // Không reset form khi có lỗi để giữ lại giá trị đã nhập
+                    openAddModal(false);
+                    
+                    // Reset button về trạng thái ban đầu
+                    const saveButton = document.getElementById('saveUserButton');
+                    if (saveButton) {
+                        saveButton.disabled = false;
+                        saveButton.innerHTML = '<i class="bi bi-save"></i> Lưu';
+                        // Clear timeout nếu có
+                        if (saveButton.dataset.timeoutId) {
+                            clearTimeout(parseInt(saveButton.dataset.timeoutId));
+                            delete saveButton.dataset.timeoutId;
+                        }
+                    }
+                    // Reset submit flag
+                    isSubmitting = false;
+                    
+                    // Hiển thị phần address khi có lỗi
+                    document.getElementById('addressSection').style.display = 'block';
+                    document.getElementById('addressSelectContainer').style.display = 'none';
+                    
+                    // Populate lại form từ request parameters hoặc user object nếu có
+                    <c:if test="${not empty user}">
+                        document.getElementById('modalFullName').value = '${fn:escapeXml(user.fullName)}';
+                        document.getElementById('modalEmail').value = '${fn:escapeXml(user.email)}';
+                        <c:if test="${not empty user.phone}">
+                            document.getElementById('modalPhone').value = '${fn:escapeXml(user.phone)}';
+                        </c:if>
+                        document.getElementById('modalRoleID').value = '${user.roleID}';
+                        document.getElementById('modalIsActive').checked = ${user.active};
+                        
+                        // Populate lại địa chỉ nếu có
+                        <c:if test="${not empty param.addressLine1}">
+                            document.getElementById('modalAddressLine1').value = '${fn:escapeXml(param.addressLine1)}';
+                        </c:if>
+                        <c:if test="${not empty param.addressLine2}">
+                            document.getElementById('modalAddressLine2').value = '${fn:escapeXml(param.addressLine2)}';
+                        </c:if>
+                        <c:if test="${not empty param.addressCity}">
+                            document.getElementById('modalAddressCity').value = '${fn:escapeXml(param.addressCity)}';
+                        </c:if>
+                        <c:if test="${not empty param.addressDistrict}">
+                            document.getElementById('modalAddressDistrict').value = '${fn:escapeXml(param.addressDistrict)}';
+                        </c:if>
+                        <c:if test="${not empty param.addressWard}">
+                            document.getElementById('modalAddressWard').value = '${fn:escapeXml(param.addressWard)}';
+                        </c:if>
+                        <c:if test="${not empty param.addressCountry}">
+                            document.getElementById('modalAddressCountry').value = '${fn:escapeXml(param.addressCountry)}';
+                        </c:if>
+                        <c:if test="${not empty param.addressPostalCode}">
+                            document.getElementById('modalAddressPostalCode').value = '${fn:escapeXml(param.addressPostalCode)}';
+                        </c:if>
+                        <c:if test="${not empty param.addressFullName}">
+                            document.getElementById('modalAddressFullName').value = '${fn:escapeXml(param.addressFullName)}';
+                        </c:if>
+                        <c:if test="${not empty param.addressPhone}">
+                            document.getElementById('modalAddressPhone').value = '${fn:escapeXml(param.addressPhone)}';
+                        </c:if>
+                        <c:if test="${not empty param.addressIsDefault}">
+                            document.getElementById('modalAddressIsDefault').checked = ${param.addressIsDefault == 'true'};
+                        </c:if>
+                    </c:if>
+                    <c:if test="${empty user}">
+                        <c:if test="${not empty param.fullName}">
+                            document.getElementById('modalFullName').value = '${fn:escapeXml(param.fullName)}';
+                        </c:if>
+                        <c:if test="${not empty param.email}">
+                            document.getElementById('modalEmail').value = '${fn:escapeXml(param.email)}';
+                        </c:if>
+                        <c:if test="${not empty param.phone}">
+                            document.getElementById('modalPhone').value = '${fn:escapeXml(param.phone)}';
+                        </c:if>
+                        <c:if test="${not empty param.roleID}">
+                            document.getElementById('modalRoleID').value = '${param.roleID}';
+                        </c:if>
+                        <c:if test="${not empty param.isActive}">
+                            document.getElementById('modalIsActive').checked = ${param.isActive == 'true'};
+                        </c:if>
+                        
+                        // Populate lại địa chỉ từ parameters nếu có
+                        <c:if test="${not empty param.addressLine1}">
+                            document.getElementById('modalAddressLine1').value = '${fn:escapeXml(param.addressLine1)}';
+                        </c:if>
+                        <c:if test="${not empty param.addressLine2}">
+                            document.getElementById('modalAddressLine2').value = '${fn:escapeXml(param.addressLine2)}';
+                        </c:if>
+                        <c:if test="${not empty param.addressCity}">
+                            document.getElementById('modalAddressCity').value = '${fn:escapeXml(param.addressCity)}';
+                        </c:if>
+                        <c:if test="${not empty param.addressDistrict}">
+                            document.getElementById('modalAddressDistrict').value = '${fn:escapeXml(param.addressDistrict)}';
+                        </c:if>
+                        <c:if test="${not empty param.addressWard}">
+                            document.getElementById('modalAddressWard').value = '${fn:escapeXml(param.addressWard)}';
+                        </c:if>
+                        <c:if test="${not empty param.addressCountry}">
+                            document.getElementById('modalAddressCountry').value = '${fn:escapeXml(param.addressCountry)}';
+                        </c:if>
+                        <c:if test="${not empty param.addressPostalCode}">
+                            document.getElementById('modalAddressPostalCode').value = '${fn:escapeXml(param.addressPostalCode)}';
+                        </c:if>
+                        <c:if test="${not empty param.addressFullName}">
+                            document.getElementById('modalAddressFullName').value = '${fn:escapeXml(param.addressFullName)}';
+                        </c:if>
+                        <c:if test="${not empty param.addressPhone}">
+                            document.getElementById('modalAddressPhone').value = '${fn:escapeXml(param.addressPhone)}';
+                        </c:if>
+                        <c:if test="${not empty param.addressIsDefault}">
+                            document.getElementById('modalAddressIsDefault').checked = ${param.addressIsDefault == 'true'};
+                        </c:if>
+                    </c:if>
+                }, 300);
+            </c:if>
         });
+
+        // Xử lý form submit để đảm bảo form hoạt động đúng
+        let isSubmitting = false; // Flag để tránh submit nhiều lần
+        let buttonClickHandler = null;
+        let formSubmitHandler = null;
+        
+        function removeFormSubmitHandlers() {
+            const userForm = document.getElementById('userForm');
+            const saveButton = document.getElementById('saveUserButton');
+            
+            if (userForm && formSubmitHandler) {
+                userForm.removeEventListener('submit', formSubmitHandler);
+                formSubmitHandler = null;
+                console.log('Removed form submit handler');
+            }
+            
+            if (saveButton && buttonClickHandler) {
+                saveButton.removeEventListener('click', buttonClickHandler);
+                buttonClickHandler = null;
+                console.log('Removed button click handler');
+            }
+        }
+        
+        function setupFormSubmitHandler() {
+            const userForm = document.getElementById('userForm');
+            const saveButton = document.getElementById('saveUserButton');
+            
+            if (!userForm) {
+                console.error('Form not found!');
+                return;
+            }
+            
+            if (!saveButton) {
+                console.error('Save button not found!');
+                return;
+            }
+            
+            // Remove handlers cũ trước khi gắn mới
+            removeFormSubmitHandlers();
+            
+            console.log('Setting up form submit handler');
+            
+            // Xử lý click button submit - chỉ để log và hiển thị loading
+            buttonClickHandler = function(e) {
+                // Ngăn submit nhiều lần
+                if (isSubmitting) {
+                    console.log('Form is already submitting, ignoring click');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+                console.log('Save button clicked');
+                
+                // Kiểm tra validation
+                const fullName = document.getElementById('modalFullName').value.trim();
+                const email = document.getElementById('modalEmail').value.trim();
+                const roleID = document.getElementById('modalRoleID').value;
+                const userID = document.getElementById('modalUserID').value;
+                const passwordHash = document.getElementById('modalPasswordHash').value.trim();
+                
+                console.log('Form values:', { fullName, email, roleID, userID, passwordHash: passwordHash ? '***' : '' });
+                
+                // Validation
+                let isValid = true;
+                let errorMessage = '';
+                
+                if (!fullName) {
+                    isValid = false;
+                    errorMessage = 'Vui lòng nhập họ tên!';
+                } else if (!email) {
+                    isValid = false;
+                    errorMessage = 'Vui lòng nhập email!';
+                } else if (!roleID || roleID === '') {
+                    isValid = false;
+                    errorMessage = 'Vui lòng chọn vai trò!';
+                } else if ((!userID || userID === '') && !passwordHash) {
+                    isValid = false;
+                    errorMessage = 'Vui lòng nhập mật khẩu cho người dùng mới!';
+                }
+                
+                if (!isValid) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Validation failed:', errorMessage);
+                    alert(errorMessage);
+                    return false;
+                }
+                
+                console.log('Validation passed, form will submit...');
+                
+                // KHÔNG disable button ngay - để form submit được
+                // Sẽ disable sau khi form submit event được trigger
+                const originalButtonText = saveButton.innerHTML;
+                
+                // Timeout để reset button nếu không có response sau 30 giây
+                const timeoutId = setTimeout(function() {
+                    console.warn('Form submit timeout - resetting button');
+                    console.warn('This means the server did not respond within 30 seconds');
+                    isSubmitting = false;
+                    saveButton.disabled = false;
+                    saveButton.innerHTML = originalButtonText;
+                    alert('Yêu cầu đang mất quá nhiều thời gian. Vui lòng kiểm tra:\n1. Server có đang chạy không?\n2. Có lỗi trong server logs không?\n3. Kết nối mạng có ổn định không?');
+                }, 30000);
+                
+                // Lưu timeout ID và button text để có thể clear nếu cần
+                saveButton.dataset.timeoutId = timeoutId;
+                saveButton.dataset.originalText = originalButtonText;
+                
+                // Submit form ngay lập tức
+                console.log('Submitting form...');
+                const formAction = userForm.getAttribute('action');
+                console.log('Form action attribute:', formAction);
+                console.log('Form method:', userForm.method);
+                
+                // Kiểm tra form action có đúng không
+                if (!formAction || typeof formAction !== 'string' || formAction.trim() === '') {
+                    console.error('Form action is invalid!', formAction);
+                    alert('Lỗi: Form action không hợp lệ. Vui lòng reload trang và thử lại.');
+                    isSubmitting = false;
+                    if (saveButton.dataset.timeoutId) {
+                        clearTimeout(parseInt(saveButton.dataset.timeoutId));
+                        delete saveButton.dataset.timeoutId;
+                    }
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+                
+                // Không preventDefault - để form submit tự nhiên
+                // Form sẽ submit và trigger submit event
+                console.log('Allowing form to submit naturally...');
+                console.log('Form will submit to:', formAction);
+                return true;
+            };
+            
+            saveButton.addEventListener('click', buttonClickHandler);
+            
+            // Xử lý submit form event - CHỈ để log, không prevent submit
+            formSubmitHandler = function(e) {
+                console.log('=== Form submit event triggered! ===');
+                
+                // Ngăn submit nhiều lần
+                if (isSubmitting) {
+                    console.log('Form is already submitting, preventing duplicate submit');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return false;
+                }
+                
+                // Đánh dấu đang submit
+                isSubmitting = true;
+                console.log('Form is submitting now...');
+                const formAction = userForm.getAttribute('action');
+                console.log('Form action:', formAction);
+                console.log('Form method:', userForm.method);
+                console.log('Form will be submitted to server now!');
+                
+                // Disable button và hiển thị loading SAU KHI submit event được trigger
+                const saveButton = document.getElementById('saveUserButton');
+                if (saveButton) {
+                    saveButton.disabled = true;
+                    const originalText = saveButton.dataset.originalText || '<i class="bi bi-save"></i> Lưu';
+                    saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Đang lưu...';
+                }
+                
+                // KHÔNG preventDefault - cho phép form submit
+                // Validation đã được check trong button click handler
+                console.log('Form submit event handler completed, form should submit now');
+                
+                // Đảm bảo form submit được - submit programmatically sau một chút
+                // Vì có thể form submit tự nhiên bị chặn bởi modal hoặc gì đó
+                setTimeout(function() {
+                    // Kiểm tra xem form đã submit chưa
+                    if (isSubmitting) {
+                        console.log('Form should be submitting... forcing submit if needed');
+                        // Thử submit form programmatically để đảm bảo submit được
+                        try {
+                            // Tạo một submit button ẩn và click nó
+                            const hiddenSubmit = document.createElement('input');
+                            hiddenSubmit.type = 'submit';
+                            hiddenSubmit.style.display = 'none';
+                            userForm.appendChild(hiddenSubmit);
+                            hiddenSubmit.click();
+                            userForm.removeChild(hiddenSubmit);
+                            console.log('Tried to submit form programmatically via hidden button');
+                        } catch (error) {
+                            console.error('Error submitting form programmatically:', error);
+                            // Fallback: submit trực tiếp
+                            userForm.submit();
+                        }
+                    }
+                }, 100);
+                
+                return true;
+            };
+            
+            userForm.addEventListener('submit', formSubmitHandler);
+            
+            // Xử lý khi trang được unload (để clear timeout)
+            window.addEventListener('beforeunload', function() {
+                const saveButton = document.getElementById('saveUserButton');
+                if (saveButton && saveButton.dataset.timeoutId) {
+                    clearTimeout(parseInt(saveButton.dataset.timeoutId));
+                }
+            });
+        }
+        
+        // Setup form handler khi DOM ready
+        document.addEventListener('DOMContentLoaded', function() {
+            setupFormSubmitHandler();
+        });
+        
+        // Setup lại form handler khi modal được mở (vì modal có thể được tạo động)
+        const userModal = document.getElementById('userModal');
+        if (userModal) {
+            userModal.addEventListener('shown.bs.modal', function() {
+                console.log('Modal shown, setting up form handler');
+                // Reset submit flag
+                isSubmitting = false;
+                // Setup form handler (sẽ remove handlers cũ trước)
+                setupFormSubmitHandler();
+            });
+            
+            // Reset và cleanup khi modal đóng
+            userModal.addEventListener('hidden.bs.modal', function() {
+                console.log('Modal hidden, cleaning up');
+                // Reset submit flag
+                isSubmitting = false;
+                
+                // Clear timeout nếu có
+                const saveButton = document.getElementById('saveUserButton');
+                if (saveButton && saveButton.dataset.timeoutId) {
+                    clearTimeout(parseInt(saveButton.dataset.timeoutId));
+                    delete saveButton.dataset.timeoutId;
+                }
+                
+                // Reset button về trạng thái ban đầu
+                if (saveButton) {
+                    saveButton.disabled = false;
+                    saveButton.innerHTML = '<i class="bi bi-save"></i> Lưu';
+                }
+                
+                // Remove event handlers để tránh memory leak
+                removeFormSubmitHandlers();
+            });
+        }
     </script>
 </body>
 </html>

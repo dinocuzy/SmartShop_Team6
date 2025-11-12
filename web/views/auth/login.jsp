@@ -1,5 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib prefix="c" uri="jakarta.tags.core" %>
+<%@ taglib prefix="fn" uri="jakarta.tags.functions" %>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -199,7 +200,7 @@
                                 <label for="email" class="form-label">Email <span style="color: #dc3545;">*</span></label>
                                 <input type="email" class="form-control" id="email" name="email" 
                                        placeholder="Email" required 
-                                       value="${param.email != null ? param.email : ''}">
+                                       value="${param.email != null ? fn:escapeXml(param.email) : (rememberedEmail != null ? fn:escapeXml(rememberedEmail) : '')}">
                             </div>
                             
                             <div class="mb-3">
@@ -215,7 +216,8 @@
                     </div>
                     
                             <div class="mb-3 form-check">
-                                <input type="checkbox" class="form-check-input" id="rememberMe" name="rememberMe">
+                                <input type="checkbox" class="form-check-input" id="rememberMe" name="rememberMe" 
+                                       <c:if test="${rememberMeChecked == true}">checked</c:if>>
                                 <label class="form-check-label" for="rememberMe" style="color: #b0b0b0;">
                                     Ghi nhớ đăng nhập
                         </label>

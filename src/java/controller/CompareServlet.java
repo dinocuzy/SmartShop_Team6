@@ -52,14 +52,14 @@ public class CompareServlet extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
         
-        HttpSession session = request.getSession();
-        User currentUser = (User) session.getAttribute("currentUser");
-        
-        if (currentUser == null) {
-            response.sendRedirect(request.getContextPath() + "/login");
-            return;
+        HttpSession session = request.getSession(false);
+        User currentUser = null;
+        if (session != null) {
+            currentUser = (User) session.getAttribute("currentUser");
         }
         
+        // Cho phép cả user chưa đăng nhập (sẽ dùng localStorage)
+        // Nhưng các action như add, remove, clear vẫn cần đăng nhập để lưu vào database
         String action = request.getParameter("action");
         
         if (action == null || action.isEmpty()) {
@@ -69,13 +69,31 @@ public class CompareServlet extends HttpServlet {
         
         switch (action) {
             case "add":
-                addToCompareList(request, response, currentUser);
+                if (currentUser != null) {
+                    addToCompareList(request, response, currentUser);
+                } else {
+                    // Redirect về trang hiện tại, client sẽ xử lý localStorage
+                    String redirectURL = request.getParameter("redirectURL");
+                    if (redirectURL != null && !redirectURL.isEmpty()) {
+                        response.sendRedirect(redirectURL);
+                    } else {
+                        response.sendRedirect(request.getContextPath() + "/compare");
+                    }
+                }
                 break;
             case "remove":
-                removeFromCompareList(request, response, currentUser);
+                if (currentUser != null) {
+                    removeFromCompareList(request, response, currentUser);
+                } else {
+                    response.sendRedirect(request.getContextPath() + "/compare");
+                }
                 break;
             case "clear":
-                clearCompareList(request, response, currentUser);
+                if (currentUser != null) {
+                    clearCompareList(request, response, currentUser);
+                } else {
+                    response.sendRedirect(request.getContextPath() + "/compare");
+                }
                 break;
             default:
                 response.sendRedirect(request.getContextPath() + "/compare");
@@ -85,36 +103,39 @@ public class CompareServlet extends HttpServlet {
     
     /**
      * Hiển thị trang so sánh sản phẩm
+     * Hỗ trợ cả user đã đăng nhập (từ database) và chưa đăng nhập (từ localStorage - client sẽ xử lý)
      */
     private void viewCompareList(HttpServletRequest request, HttpServletResponse response) 
             throws ServletException, IOException {
         
-        HttpSession session = request.getSession();
-        User currentUser = (User) session.getAttribute("currentUser");
-        
-        if (currentUser == null) {
-            response.sendRedirect(request.getContextPath() + "/login");
-            return;
+        HttpSession session = request.getSession(false);
+        User currentUser = null;
+        if (session != null) {
+            currentUser = (User) session.getAttribute("currentUser");
         }
         
         try {
-            // Lấy danh sách CompareListItem đang so sánh
-            List<CompareListItem> compareItems = compareListService.getUserCompareList(currentUser.getUserID());
-            
-            // Lấy số lượng sản phẩm trong danh sách so sánh
-            int compareCount = compareListService.getCompareListCount(currentUser.getUserID());
-            
-            // Chuyển đổi CompareListItem thành Product objects
             List<Product> compareProducts = new ArrayList<>();
-            for (CompareListItem item : compareItems) {
-                Product product = productService.getProductById(item.getProductID());
-                if (product != null) {
-                    compareProducts.add(product);
+            int compareCount = 0;
+            
+            if (currentUser != null) {
+                // Lấy từ database nếu user đã đăng nhập
+                List<CompareListItem> compareItems = compareListService.getUserCompareList(currentUser.getUserID());
+                compareCount = compareListService.getCompareListCount(currentUser.getUserID());
+                
+                // Chuyển đổi CompareListItem thành Product objects
+                for (CompareListItem item : compareItems) {
+                    Product product = productService.getProductById(item.getProductID());
+                    if (product != null) {
+                        compareProducts.add(product);
+                    }
                 }
             }
+            // Nếu chưa đăng nhập, client sẽ lấy từ localStorage và hiển thị
             
             request.setAttribute("compareProducts", compareProducts);
             request.setAttribute("compareCount", compareCount);
+            request.setAttribute("isLoggedIn", currentUser != null);
             
             request.getRequestDispatcher("/views/store/compare.jsp").forward(request, response);
             

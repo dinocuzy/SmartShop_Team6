@@ -13,6 +13,7 @@ import cartservice.ICartService;
 import cartservice.CartService;
 
 import java.io.IOException;
+import jakarta.servlet.http.Cookie;
 
 /**
  * Servlet xử lý đăng xuất
@@ -60,6 +61,18 @@ public class LogoutServlet extends HttpServlet {
             // Xóa tất cả attributes và invalidate session
             session.invalidate();
         }
+        
+        // Xóa remember me cookies
+        Cookie rememberCookie = new Cookie("rememberMe", "");
+        rememberCookie.setMaxAge(0);
+        rememberCookie.setPath(request.getContextPath() + "/");
+        rememberCookie.setHttpOnly(true);
+        response.addCookie(rememberCookie);
+        
+        Cookie emailCookie = new Cookie("rememberEmail", "");
+        emailCookie.setMaxAge(0);
+        emailCookie.setPath(request.getContextPath() + "/");
+        response.addCookie(emailCookie);
         
         // Redirect về trang chủ với thông báo đăng xuất thành công
         response.sendRedirect(request.getContextPath() + "/?logout=success");

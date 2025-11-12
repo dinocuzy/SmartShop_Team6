@@ -12,6 +12,7 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Implementation của IProductDAO
@@ -510,6 +511,7 @@ public class ProductDAO implements IProductDAO {
     
     /**
      * Chuẩn hóa từ khóa tìm kiếm: map các từ viết tắt và từ đồng nghĩa
+     * Mở rộng để hỗ trợ nhiều từ khóa thay thế hơn
      */
     private String normalizeSearchKeyword(String keyword) {
         if (keyword == null || keyword.trim().isEmpty()) {
@@ -517,48 +519,153 @@ public class ProductDAO implements IProductDAO {
         }
         
         keyword = keyword.toLowerCase().trim();
+        String originalKeyword = keyword;
         
-        // Map các từ viết tắt và từ đồng nghĩa
-        // Điện thoại
-        if (keyword.contains("đt") || keyword.contains("dt")) {
-            keyword = keyword.replace("đt", "điện thoại").replace("dt", "điện thoại");
-        }
-        if (keyword.contains("phone") || keyword.contains("smartphone")) {
-            keyword = keyword.replace("phone", "điện thoại").replace("smartphone", "điện thoại");
-        }
-        // Xử lý "mua đt", "mua điện thoại" -> "điện thoại"
-        if (keyword.contains("mua đt") || keyword.contains("mua dt")) {
-            keyword = keyword.replace("mua đt", "điện thoại").replace("mua dt", "điện thoại");
-        }
-        if (keyword.contains("mua điện thoại")) {
-            keyword = keyword.replace("mua điện thoại", "điện thoại");
-        }
+        // Dictionary từ khóa thay thế (map từ khóa -> từ khóa chuẩn)
+        Map<String, String> synonymMap = new java.util.HashMap<>();
         
-        // Laptop
-        if (keyword.contains("laptop") || keyword.contains("máy tính")) {
-            keyword = keyword.replace("máy tính", "laptop");
-        }
+        // Điện thoại / Smartphone
+        synonymMap.put("đt", "điện thoại");
+        synonymMap.put("dt", "điện thoại");
+        synonymMap.put("phone", "điện thoại");
+        synonymMap.put("smartphone", "điện thoại");
+        synonymMap.put("mobile", "điện thoại");
+        synonymMap.put("cellphone", "điện thoại");
+        synonymMap.put("cell phone", "điện thoại");
+        
+        // Laptop / Máy tính
+        synonymMap.put("máy tính", "laptop");
+        synonymMap.put("máy tính xách tay", "laptop");
+        synonymMap.put("notebook", "laptop");
+        synonymMap.put("computer", "laptop");
+        synonymMap.put("pc", "laptop");
         
         // Tablet
-        if (keyword.contains("tablet") || keyword.contains("máy tính bảng")) {
-            keyword = keyword.replace("máy tính bảng", "tablet");
-        }
+        synonymMap.put("máy tính bảng", "tablet");
+        synonymMap.put("ipad", "tablet");
         
         // Tai nghe
-        if (keyword.contains("tai nghe") || keyword.contains("headphone") || keyword.contains("earphone")) {
-            keyword = keyword.replace("headphone", "tai nghe").replace("earphone", "tai nghe");
-        }
+        synonymMap.put("headphone", "tai nghe");
+        synonymMap.put("headphones", "tai nghe");
+        synonymMap.put("earphone", "tai nghe");
+        synonymMap.put("earphones", "tai nghe");
+        synonymMap.put("headset", "tai nghe");
+        synonymMap.put("loa tai", "tai nghe");
+        
+        // Loa
+        synonymMap.put("speaker", "loa");
+        synonymMap.put("speakers", "loa");
+        synonymMap.put("loa bluetooth", "loa");
+        synonymMap.put("loa không dây", "loa");
+        synonymMap.put("sound system", "loa");
+        
+        // Pin sạc dự phòng
+        synonymMap.put("powerbank", "pin sạc dự phòng");
+        synonymMap.put("power bank", "pin sạc dự phòng");
+        synonymMap.put("pin dự phòng", "pin sạc dự phòng");
+        synonymMap.put("sạc dự phòng", "pin sạc dự phòng");
+        synonymMap.put("pin sạc", "pin sạc dự phòng");
         
         // Sạc
-        if (keyword.contains("sạc") || keyword.contains("charger")) {
-            keyword = keyword.replace("charger", "sạc");
-        }
+        synonymMap.put("charger", "sạc");
+        synonymMap.put("cáp sạc", "sạc");
+        synonymMap.put("sạc điện thoại", "sạc");
+        synonymMap.put("adapter", "sạc");
+        synonymMap.put("củ sạc", "sạc");
         
         // Ốp lưng
-        if (keyword.contains("ốp") || keyword.contains("case")) {
-            keyword = keyword.replace("case", "ốp");
+        synonymMap.put("case", "ốp lưng");
+        synonymMap.put("phone case", "ốp lưng");
+        synonymMap.put("bumper", "ốp lưng");
+        synonymMap.put("vỏ điện thoại", "ốp lưng");
+        synonymMap.put("bao da", "ốp lưng");
+        
+        // Màn hình
+        synonymMap.put("monitor", "màn hình");
+        synonymMap.put("screen", "màn hình");
+        synonymMap.put("display", "màn hình");
+        synonymMap.put("màn hình máy tính", "màn hình");
+        synonymMap.put("màn hình laptop", "màn hình");
+        
+        // Bàn phím
+        synonymMap.put("keyboard", "bàn phím");
+        synonymMap.put("phím", "bàn phím");
+        synonymMap.put("bàn phím cơ", "bàn phím");
+        synonymMap.put("bàn phím máy tính", "bàn phím");
+        
+        // Chuột
+        synonymMap.put("mouse", "chuột");
+        synonymMap.put("chuột máy tính", "chuột");
+        synonymMap.put("chuột không dây", "chuột");
+        synonymMap.put("chuột bluetooth", "chuột");
+        
+        // Webcam
+        synonymMap.put("webcam", "camera");
+        synonymMap.put("camera máy tính", "camera");
+        synonymMap.put("camera web", "camera");
+        synonymMap.put("cam", "camera");
+        
+        // USB
+        synonymMap.put("usb drive", "usb");
+        synonymMap.put("usb flash", "usb");
+        synonymMap.put("flash drive", "usb");
+        synonymMap.put("ổ usb", "usb");
+        synonymMap.put("thẻ nhớ usb", "usb");
+        
+        // Thẻ nhớ
+        synonymMap.put("memory card", "thẻ nhớ");
+        synonymMap.put("sd card", "thẻ nhớ");
+        synonymMap.put("microsd", "thẻ nhớ");
+        synonymMap.put("thẻ sd", "thẻ nhớ");
+        synonymMap.put("thẻ microsd", "thẻ nhớ");
+        
+        // Thương hiệu
+        synonymMap.put("iphone", "apple");
+        synonymMap.put("galaxy", "samsung");
+        synonymMap.put("mi", "xiaomi");
+        synonymMap.put("redmi", "xiaomi");
+        
+        // Xử lý từng từ trong keyword
+        String[] words = keyword.split("\\s+");
+        StringBuilder normalized = new StringBuilder();
+        
+        for (String word : words) {
+            // Bỏ qua các từ không quan trọng
+            if (word.length() <= 2 || 
+                word.equals("mua") || word.equals("cần") || word.equals("cho") ||
+                word.equals("với") || word.equals("của") || word.equals("và") ||
+                word.equals("có") || word.equals("là") || word.equals("để")) {
+                normalized.append(word).append(" ");
+                continue;
+            }
+            
+            // Kiểm tra exact match
+            if (synonymMap.containsKey(word)) {
+                normalized.append(synonymMap.get(word)).append(" ");
+            } else {
+                // Kiểm tra partial match (nếu word chứa trong key hoặc ngược lại)
+                boolean found = false;
+                for (Map.Entry<String, String> entry : synonymMap.entrySet()) {
+                    if (word.contains(entry.getKey()) || entry.getKey().contains(word)) {
+                        normalized.append(entry.getValue()).append(" ");
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    normalized.append(word).append(" ");
+                }
+            }
         }
         
-        return keyword;
+        String result = normalized.toString().trim();
+        
+        // Nếu không có thay đổi, trả về keyword gốc
+        if (result.isEmpty() || result.equals(originalKeyword)) {
+            return originalKeyword;
+        }
+        
+        // Kết hợp keyword gốc và normalized để tăng khả năng tìm thấy
+        return originalKeyword + " " + result;
     }
 }

@@ -112,3 +112,99 @@
 
 <!-- AI Chatbot Widget - Hiển thị trên mọi trang -->
 <jsp:include page="/views/common/chatbot.jsp" />
+
+<!-- Compare Modal -->
+<div class="modal fade" id="compareModal" tabindex="-1" aria-labelledby="compareModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content" style="background-color: #2c2c2c; color: #fff;">
+            <div class="modal-header" style="border-bottom: 1px solid #444;">
+                <h5 class="modal-title" id="compareModalLabel">
+                    <i class="bi bi-arrow-left-right"></i> So sánh sản phẩm
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <!-- Product 1 -->
+                    <div class="col-md-6">
+                        <div class="text-center mb-3">
+                            <img id="compareProduct1Image" src="" alt="Product 1" 
+                                 style="max-width: 200px; max-height: 200px; object-fit: cover; border-radius: 8px;">
+                        </div>
+                        <h5 id="compareProduct1Name" class="text-center mb-3"></h5>
+                        <div class="text-center mb-3">
+                            <div id="compareProduct1Price" style="font-size: 1.5rem; font-weight: bold; color: #dc3545;"></div>
+                            <div id="compareProduct1OldPrice" style="font-size: 0.9rem; text-decoration: line-through; color: #6a6a6a;"></div>
+                        </div>
+                        <table class="table table-dark table-striped">
+                            <tr>
+                                <td><strong>Danh mục:</strong></td>
+                                <td id="compareProduct1Category"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Tồn kho:</strong></td>
+                                <td id="compareProduct1Stock"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Mô tả:</strong></td>
+                                <td id="compareProduct1Description" style="font-size: 0.9rem;"></td>
+                            </tr>
+                        </table>
+                        <div class="text-center">
+                            <button id="compareProduct1ViewBtn" class="btn btn-primary">
+                                <i class="bi bi-eye"></i> Xem chi tiết
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Product 2 -->
+                    <div class="col-md-6">
+                        <div class="text-center mb-3">
+                            <img id="compareProduct2Image" src="" alt="Product 2" 
+                                 style="max-width: 200px; max-height: 200px; object-fit: cover; border-radius: 8px;">
+                        </div>
+                        <h5 id="compareProduct2Name" class="text-center mb-3"></h5>
+                        <div class="text-center mb-3">
+                            <div id="compareProduct2Price" style="font-size: 1.5rem; font-weight: bold; color: #dc3545;"></div>
+                            <div id="compareProduct2OldPrice" style="font-size: 0.9rem; text-decoration: line-through; color: #6a6a6a;"></div>
+                        </div>
+                        <table class="table table-dark table-striped">
+                            <tr>
+                                <td><strong>Danh mục:</strong></td>
+                                <td id="compareProduct2Category"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Tồn kho:</strong></td>
+                                <td id="compareProduct2Stock"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Mô tả:</strong></td>
+                                <td id="compareProduct2Description" style="font-size: 0.9rem;"></td>
+                            </tr>
+                        </table>
+                        <div class="text-center">
+                            <button id="compareProduct2ViewBtn" class="btn btn-primary">
+                                <i class="bi bi-eye"></i> Xem chi tiết
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid #444;">
+                <a href="${pageContext.request.contextPath}/compare" class="btn btn-outline-light">
+                    <i class="bi bi-arrow-left-right"></i> Xem trang so sánh đầy đủ
+                </a>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Compare List JavaScript -->
+<script>
+    // Set context path for compare.js (if not already set in head)
+    if (typeof window.contextPath === 'undefined') {
+        window.contextPath = '${pageContext.request.contextPath}';
+    }
+</script>
+<script src="${pageContext.request.contextPath}/js/compare.js"></script>

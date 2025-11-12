@@ -425,42 +425,6 @@
             <!-- Summary Panel -->
             <div class="col-lg-4">
                 <div class="summary-panel">
-                    <!-- Xuất hóa đơn -->
-                    <div class="summary-item">
-                        <div class="summary-label">
-                            <i class="bi bi-file-earmark-text"></i>
-                            <span>Xuất hóa đơn</span>
-                        </div>
-                        <a href="#" class="summary-change-link">Thay đổi ></a>
-                    </div>
-                    
-                    <!-- Hẹn giờ nhận hàng -->
-                    <div class="summary-item">
-                        <div class="summary-label">
-                            <i class="bi bi-clock"></i>
-                            <span>Hẹn giờ nhận hàng</span>
-                        </div>
-                        <a href="#" class="summary-change-link">Thay đổi ></a>
-                    </div>
-                    
-                    <!-- Ghi chú đơn hàng -->
-                    <div class="summary-item">
-                        <div class="summary-label">
-                            <i class="bi bi-pencil-square"></i>
-                            <span>Ghi chú đơn hàng</span>
-                        </div>
-                        <a href="#" class="summary-change-link">Thay đổi ></a>
-                    </div>
-                    
-                    <!-- Mã giảm giá -->
-                    <div class="summary-item">
-                        <div class="summary-label">
-                            <i class="bi bi-tag"></i>
-                            <span>Mã giảm giá</span>
-                        </div>
-                        <a href="${pageContext.request.contextPath}/checkout" class="summary-change-link">Chọn ></a>
-                    </div>
-                    
                     <!-- Tổng cộng -->
                     <div class="total-section">
                         <div class="total-label">TỔNG CỘNG</div>

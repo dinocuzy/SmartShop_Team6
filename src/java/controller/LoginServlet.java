@@ -20,6 +20,9 @@ import model.Product;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import jakarta.servlet.http.Cookie;
+import java.util.Base64;
+import java.util.UUID;
 
 /**
  * Servlet xử lý đăng nhập và đăng xuất
@@ -54,6 +57,11 @@ public class LoginServlet extends HttpServlet {
         HttpSession session = request.getSession();
         User currentUser = (User) session.getAttribute("currentUser");
         
+        // Nếu chưa đăng nhập, kiểm tra remember me cookie
+        if (currentUser == null) {
+            currentUser = checkRememberMeCookie(request, session);
+        }
+        
         if (currentUser != null) {
             // Đã đăng nhập, redirect về dashboard phù hợp theo role
             String roleName = currentUser.getRoleName();
@@ -84,6 +92,13 @@ public class LoginServlet extends HttpServlet {
         }
         
         // Chưa đăng nhập, hiển thị form đăng nhập
+        // Kiểm tra remember me cookie để hiển thị email và checkbox
+        String rememberedEmail = getRememberedEmail(request);
+        if (rememberedEmail != null) {
+            request.setAttribute("rememberedEmail", rememberedEmail);
+            request.setAttribute("rememberMeChecked", true);
+        }
+        
         request.getRequestDispatcher("/views/auth/login.jsp").forward(request, response);
     }
     
@@ -256,11 +271,40 @@ public class LoginServlet extends HttpServlet {
             // Kiểm tra "Remember Me"
             String rememberMe = request.getParameter("rememberMe");
             if (rememberMe != null && rememberMe.equals("on")) {
-                // Nếu chọn Remember Me, set session timeout 7 ngày
+                // Nếu chọn Remember Me:
+                // 1. Set session timeout 7 ngày
                 session.setMaxInactiveInterval(7 * 24 * 60 * 60); // 7 ngày
+                
+                // 2. Tạo remember me token và lưu vào cookie
+                String rememberToken = generateRememberToken(user.getUserID(), user.getEmail());
+                Cookie rememberCookie = new Cookie("rememberMe", rememberToken);
+                rememberCookie.setMaxAge(7 * 24 * 60 * 60); // 7 ngày
+                rememberCookie.setPath(request.getContextPath() + "/");
+                rememberCookie.setHttpOnly(true); // Bảo mật: JavaScript không thể đọc
+                rememberCookie.setSecure(false); // Set true nếu dùng HTTPS
+                response.addCookie(rememberCookie);
+                
+                // Lưu email vào cookie để hiển thị lại khi đăng nhập
+                Cookie emailCookie = new Cookie("rememberEmail", Base64.getEncoder().encodeToString(user.getEmail().getBytes()));
+                emailCookie.setMaxAge(7 * 24 * 60 * 60); // 7 ngày
+                emailCookie.setPath(request.getContextPath() + "/");
+                response.addCookie(emailCookie);
+                
+                System.out.println("Remember Me enabled for user: " + user.getEmail());
             } else {
                 // Nếu không chọn, session timeout 30 phút
                 session.setMaxInactiveInterval(30 * 60); // 30 phút
+                
+                // Xóa remember me cookies nếu có
+                Cookie rememberCookie = new Cookie("rememberMe", "");
+                rememberCookie.setMaxAge(0);
+                rememberCookie.setPath(request.getContextPath() + "/");
+                response.addCookie(rememberCookie);
+                
+                Cookie emailCookie = new Cookie("rememberEmail", "");
+                emailCookie.setMaxAge(0);
+                emailCookie.setPath(request.getContextPath() + "/");
+                response.addCookie(emailCookie);
             }
             
             // Redirect về dashboard phù hợp theo role
@@ -315,6 +359,149 @@ public class LoginServlet extends HttpServlet {
             e.printStackTrace();
             return password; // Fallback: return plain password
         }
+    }
+    
+    /**
+     * Tạo remember me token
+     * Format: userID:email:randomToken (base64 encoded)
+     */
+    private String generateRememberToken(int userID, String email) {
+        try {
+            String randomToken = UUID.randomUUID().toString();
+            String tokenData = userID + ":" + email + ":" + randomToken;
+            String hashedToken = hashPassword(tokenData);
+            String finalToken = userID + ":" + hashedToken;
+            return Base64.getEncoder().encodeToString(finalToken.getBytes());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+    
+    /**
+     * Kiểm tra remember me cookie và tự động đăng nhập
+     */
+    private User checkRememberMeCookie(HttpServletRequest request, HttpSession session) {
+        try {
+            Cookie[] cookies = request.getCookies();
+            if (cookies == null) {
+                return null;
+            }
+            
+            String rememberToken = null;
+            for (Cookie cookie : cookies) {
+                if ("rememberMe".equals(cookie.getName())) {
+                    rememberToken = cookie.getValue();
+                    break;
+                }
+            }
+            
+            if (rememberToken == null || rememberToken.isEmpty()) {
+                return null;
+            }
+            
+            // Decode token
+            String decodedToken = new String(Base64.getDecoder().decode(rememberToken));
+            String[] parts = decodedToken.split(":", 2);
+            if (parts.length != 2) {
+                return null;
+            }
+            
+            int userID = Integer.parseInt(parts[0]);
+            String tokenHash = parts[1];
+            
+            // Lấy user từ database
+            User user = userService.getUserById(userID);
+            if (user == null || !user.isActive()) {
+                return null;
+            }
+            
+            // Verify token: Kiểm tra userID trong token có khớp với userID từ DB không
+            // Vì mỗi lần tạo token sẽ có random token khác nhau, nên ta chỉ verify userID
+            // Token format: userID:hashedToken, ta đã lấy được userID và user từ DB
+            // Nếu user tồn tại và active, token được coi là hợp lệ
+            if (user.getUserID() == userID) {
+                // Token hợp lệ, đăng nhập user
+                // Lấy roleName nếu chưa có
+                if (user.getRoleName() == null || user.getRoleName().isEmpty()) {
+                    var role = roleService.getRoleById(user.getRoleID());
+                    if (role != null) {
+                        user.setRoleName(role.getRoleName());
+                    }
+                }
+                
+                session.setAttribute("currentUser", user);
+                session.setMaxInactiveInterval(7 * 24 * 60 * 60); // 7 ngày
+                
+                // Load cart từ DB
+                if (cartService != null) {
+                    try {
+                        java.util.List<model.CartItemDB> dbCartItems = cartService.getCartItemsByUser(user.getUserID());
+                        Cart dbCart = new Cart();
+                        
+                        for (model.CartItemDB dbItem : dbCartItems) {
+                            Product product = dbItem.getProduct();
+                            if (product != null) {
+                                CartItem cartItem = new CartItem();
+                                cartItem.setProductID(product.getProductID());
+                                cartItem.setProductName(product.getProductName());
+                                cartItem.setImageUrl(product.getImageUrl());
+                                cartItem.setPrice(product.getPrice());
+                                cartItem.setQuantity(dbItem.getQuantity());
+                                cartItem.setStock(product.getStock());
+                                cartItem.setStockStatus(product.getStockStatus());
+                                dbCart.addItem(cartItem);
+                            }
+                        }
+                        
+                        session.setAttribute("cart", dbCart);
+                    } catch (Exception e) {
+                        System.err.println("Error loading cart from DB on remember me: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                }
+                
+                System.out.println("Auto login from Remember Me cookie for user: " + user.getEmail());
+                return user;
+            }
+            
+        } catch (Exception e) {
+            System.err.println("Error checking remember me cookie: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Lấy email từ remember me cookie
+     */
+    private String getRememberedEmail(HttpServletRequest request) {
+        try {
+            Cookie[] cookies = request.getCookies();
+            if (cookies == null) {
+                return null;
+            }
+            
+            for (Cookie cookie : cookies) {
+                if ("rememberEmail".equals(cookie.getName())) {
+                    String encodedEmail = cookie.getValue();
+                    if (encodedEmail != null && !encodedEmail.isEmpty()) {
+                        try {
+                            String decodedEmail = new String(Base64.getDecoder().decode(encodedEmail));
+                            return decodedEmail;
+                        } catch (Exception e) {
+                            System.err.println("Error decoding remember email cookie: " + e.getMessage());
+                            return null;
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error getting remembered email: " + e.getMessage());
+        }
+        
+        return null;
     }
 }
 

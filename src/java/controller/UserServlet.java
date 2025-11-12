@@ -125,14 +125,27 @@ public class UserServlet extends HttpServlet {
                     break;
             }
         } catch (Exception e) {
+            System.err.println("Error in doPost: " + e.getMessage());
             e.printStackTrace();
-            request.setAttribute("errorMessage", "An error occurred: " + e.getMessage());
             
-            String userID = request.getParameter("userID");
-            if (userID != null && !userID.isEmpty()) {
-                showEditForm(request, response);
+            // Đảm bảo response chưa được commit
+            if (!response.isCommitted()) {
+                request.setAttribute("errorMessage", "Đã xảy ra lỗi: " + e.getMessage());
+                
+                String userID = request.getParameter("userID");
+                if (userID != null && !userID.isEmpty()) {
+                    showEditForm(request, response);
+                } else {
+                    showAddForm(request, response);
+                }
             } else {
-                showAddForm(request, response);
+                // Nếu response đã được commit, gửi error response
+                response.setContentType("text/html;charset=UTF-8");
+                response.getWriter().println("<html><body>");
+                response.getWriter().println("<h1>Lỗi</h1>");
+                response.getWriter().println("<p>" + e.getMessage() + "</p>");
+                response.getWriter().println("<a href='" + request.getContextPath() + "/admin/users'>Quay lại</a>");
+                response.getWriter().println("</body></html>");
             }
         }
     }
@@ -553,18 +566,25 @@ public class UserServlet extends HttpServlet {
         
         int savedUserID = 0;
         try {
+            System.out.println("Starting saveUser - UserID: " + user.getUserID() + ", Email: " + user.getEmail());
+            
             if (user.getUserID() > 0) {
+                System.out.println("Updating existing user...");
                 userService.updateUser(user);
                 savedUserID = user.getUserID();
                 request.setAttribute("successMessage", "User updated successfully");
+                System.out.println("User updated successfully, ID: " + savedUserID);
             } else {
+                System.out.println("Adding new user...");
                 savedUserID = userService.addUser(user);
                 user.setUserID(savedUserID);
                 request.setAttribute("successMessage", "User added successfully");
+                System.out.println("User added successfully, ID: " + savedUserID);
             }
             
             // Xử lý address nếu có (chỉ khi user đã được lưu thành công)
             if (savedUserID > 0) {
+                System.out.println("Processing address for user ID: " + savedUserID);
                 String addressIDParam = request.getParameter("addressID");
                 String addressFullName = request.getParameter("addressFullName");
                 String addressPhone = request.getParameter("addressPhone");
@@ -616,22 +636,69 @@ public class UserServlet extends HttpServlet {
                 }
             }
             
-        } catch (IllegalArgumentException e) {
-            request.setAttribute("errorMessage", e.getMessage());
-            if (user.getUserID() > 0) {
-                request.setAttribute("user", user);
-                request.setAttribute("action", "edit");
-                request.getRequestDispatcher("/views/admin/userList.jsp").forward(request, response);
-                return;
+            // Redirect sau khi lưu thành công
+            System.out.println("User saved successfully, redirecting to list page...");
+            String redirectUrl = request.getContextPath() + "/admin/users?action=list";
+            System.out.println("Redirect URL: " + redirectUrl);
+            
+            if (!response.isCommitted()) {
+                response.sendRedirect(redirectUrl);
             } else {
-                request.setAttribute("user", user);
-                request.setAttribute("action", "add");
-                request.getRequestDispatcher("/views/admin/userList.jsp").forward(request, response);
-                return;
+                System.err.println("Response already committed, cannot redirect!");
             }
+            return;
+            
+        } catch (IllegalArgumentException e) {
+            System.err.println("IllegalArgumentException in saveUser: " + e.getMessage());
+            e.printStackTrace();
+            System.err.println("Stack trace:");
+            e.printStackTrace();
+            
+            // Đảm bảo response chưa được commit
+            if (!response.isCommitted()) {
+                System.out.println("Response not committed, forwarding to form with error");
+                // Giữ lại giá trị form để hiển thị lại
+                request.setAttribute("user", user);
+                request.setAttribute("action", user.getUserID() > 0 ? "edit" : "add");
+                
+                // Xử lý thông báo lỗi
+                String errorMsg = e.getMessage();
+                if (errorMsg != null && errorMsg.contains("Email already exists")) {
+                    request.setAttribute("errorMessage", "Email này đã được sử dụng. Vui lòng chọn email khác.");
+                } else {
+                    request.setAttribute("errorMessage", errorMsg != null ? errorMsg : "Đã xảy ra lỗi khi lưu người dùng");
+                }
+                
+                if (user.getUserID() > 0) {
+                    showEditForm(request, response);
+                } else {
+                    showAddForm(request, response);
+                }
+            }
+            return;
+        } catch (Exception e) {
+            System.err.println("Unexpected error in saveUser: " + e.getMessage());
+            System.err.println("Exception type: " + e.getClass().getName());
+            e.printStackTrace();
+            System.err.println("Stack trace:");
+            e.printStackTrace();
+            
+            // Đảm bảo response chưa được commit
+            if (!response.isCommitted()) {
+                System.out.println("Response not committed, forwarding to form with error");
+                // Giữ lại giá trị form để hiển thị lại
+                request.setAttribute("user", user);
+                request.setAttribute("action", user.getUserID() > 0 ? "edit" : "add");
+                request.setAttribute("errorMessage", "Đã xảy ra lỗi khi lưu người dùng: " + e.getMessage());
+                
+                if (user.getUserID() > 0) {
+                    showEditForm(request, response);
+                } else {
+                    showAddForm(request, response);
+                }
+            }
+            return;
         }
-        
-        response.sendRedirect(request.getContextPath() + "/admin/users?action=list");
     }
     
     /**

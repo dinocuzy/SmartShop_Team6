@@ -31,6 +31,7 @@ import productservice.ProductService;
 import model.Product;
 import util.VNPayUtil;
 import util.VNPayConfig;
+import util.EmailUtil;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -329,6 +330,65 @@ public class CheckoutServlet extends HttpServlet {
                         e.printStackTrace();
                     }
                 }
+
+                // [GỬI EMAIL] Gửi email xác nhận đơn hàng cho khách hàng
+                System.out.println("=== COD Checkout: Starting email sending process ===");
+                System.out.println("Current user: " + (currentUser != null ? currentUser.getEmail() : "null"));
+                System.out.println("Order ID: " + orderID);
+                
+                try {
+                    if (currentUser == null) {
+                        System.err.println("✗ Cannot send email: currentUser is null");
+                    } else if (currentUser.getEmail() == null || currentUser.getEmail().trim().isEmpty()) {
+                        System.err.println("✗ Cannot send email: currentUser.getEmail() is null or empty");
+                    } else {
+                        // Lấy order items
+                        System.out.println("Getting order items for order ID: " + orderID);
+                        List<OrderItem> orderItems = orderItemService.getOrderItemsByOrder(orderID);
+                        System.out.println("Order items count: " + (orderItems != null ? orderItems.size() : 0));
+                        
+                        // Lấy địa chỉ giao hàng
+                        Address shippingAddress = null;
+                        if (order.getShippingAddressID() != null && order.getShippingAddressID() > 0) {
+                            System.out.println("Getting shipping address ID: " + order.getShippingAddressID());
+                            shippingAddress = addressService.getAddressById(order.getShippingAddressID());
+                            System.out.println("Shipping address: " + (shippingAddress != null ? "found" : "not found"));
+                        }
+                        
+                        // Lấy phương thức thanh toán (đã có sẵn từ dòng 245)
+                        String paymentMethodName = null;
+                        if (paymentMethod != null) {
+                            paymentMethodName = paymentMethod.getMethodName();
+                        }
+                        System.out.println("Payment method: " + paymentMethodName);
+                        
+                        // Gửi email
+                        System.out.println("Calling EmailUtil.sendOrderConfirmationEmail...");
+                        System.out.println("Email: " + currentUser.getEmail());
+                        System.out.println("Order ID: " + order.getOrderID());
+                        System.out.println("Order items: " + (orderItems != null ? orderItems.size() : 0));
+                        
+                        boolean emailSent = EmailUtil.sendOrderConfirmationEmail(
+                            currentUser.getEmail(),
+                            order,
+                            orderItems,
+                            currentUser.getFullName(),
+                            shippingAddress,
+                            paymentMethodName
+                        );
+                        
+                        if (emailSent) {
+                            System.out.println("✓ Order confirmation email sent successfully to: " + currentUser.getEmail());
+                        } else {
+                            System.err.println("✗ Failed to send order confirmation email to: " + currentUser.getEmail());
+                        }
+                    }
+                } catch (Exception e) {
+                    // Không throw exception để không ảnh hưởng đến việc tạo order
+                    System.err.println("✗ Error sending order confirmation email: " + e.getMessage());
+                    e.printStackTrace();
+                }
+                System.out.println("=== COD Checkout: Email sending process completed ===");
 
                 // Redirect đến trang xác nhận đơn hàng
                 response.sendRedirect(request.getContextPath() + "/customer/orders?orderID=" + orderID + "&success=true");

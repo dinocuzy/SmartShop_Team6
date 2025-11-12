@@ -15,6 +15,7 @@ import paymentservice.PaymentService;
 import paymentmethodservice.IPaymentMethodService;
 import paymentmethodservice.PaymentMethodService;
 import util.VNPayConfig;
+import util.EmailUtil;
 import orderstatushistoryservice.IOrderStatusHistoryService;
 import orderstatushistoryservice.OrderStatusHistoryService;
 import jakarta.servlet.http.HttpSession;
@@ -278,6 +279,78 @@ public class VNPayCallbackServlet extends HttpServlet {
                         e.printStackTrace();
                     }
                 }
+                
+                // [GỬI EMAIL] Gửi email xác nhận đơn hàng cho khách hàng
+                System.out.println("=== VNPay Callback: Starting email sending process ===");
+                System.out.println("Current user: " + (currentUser != null ? currentUser.getEmail() : "null"));
+                System.out.println("Order ID: " + orderID);
+                
+                if (currentUser != null && currentUser.getEmail() != null && !currentUser.getEmail().trim().isEmpty()) {
+                    try {
+                        System.out.println("Getting order items for order ID: " + orderID);
+                        // Lấy order items
+                        java.util.List<model.OrderItem> orderItems = orderItemService.getOrderItemsByOrder(orderID);
+                        System.out.println("Order items count: " + (orderItems != null ? orderItems.size() : 0));
+                        
+                        // Lấy địa chỉ giao hàng
+                        model.Address shippingAddress = null;
+                        if (order.getShippingAddressID() != null && order.getShippingAddressID() > 0) {
+                            System.out.println("Getting shipping address ID: " + order.getShippingAddressID());
+                            addressservice.IAddressService addressService = new addressservice.AddressService();
+                            shippingAddress = addressService.getAddressById(order.getShippingAddressID());
+                            System.out.println("Shipping address: " + (shippingAddress != null ? "found" : "not found"));
+                        }
+                        
+                        // Lấy phương thức thanh toán
+                        String paymentMethodName = "VNPay";
+                        if (pendingPaymentMethodID != null) {
+                            try {
+                                model.PaymentMethod paymentMethod = paymentMethodService.getPaymentMethodById((Integer) pendingPaymentMethodID);
+                                if (paymentMethod != null) {
+                                    paymentMethodName = paymentMethod.getMethodName();
+                                }
+                            } catch (Exception e) {
+                                System.err.println("Error getting payment method: " + e.getMessage());
+                            }
+                        }
+                        System.out.println("Payment method: " + paymentMethodName);
+                        
+                        // Gửi email
+                        System.out.println("Calling EmailUtil.sendOrderConfirmationEmail...");
+                        System.out.println("Email: " + currentUser.getEmail());
+                        System.out.println("Order ID: " + order.getOrderID());
+                        System.out.println("Order items: " + (orderItems != null ? orderItems.size() : 0));
+                        
+                        boolean emailSent = EmailUtil.sendOrderConfirmationEmail(
+                            currentUser.getEmail(),
+                            order,
+                            orderItems,
+                            currentUser.getFullName(),
+                            shippingAddress,
+                            paymentMethodName
+                        );
+                        
+                        if (emailSent) {
+                            System.out.println("✓ Order confirmation email sent successfully to: " + currentUser.getEmail());
+                        } else {
+                            System.err.println("✗ Failed to send order confirmation email to: " + currentUser.getEmail());
+                        }
+                    } catch (Exception e) {
+                        // Không throw exception để không ảnh hưởng đến việc tạo order
+                        System.err.println("✗ Error sending order confirmation email: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                } else {
+                    System.err.println("✗ Cannot send email: currentUser is null or email is empty");
+                    if (currentUser == null) {
+                        System.err.println("  - currentUser is null");
+                    } else if (currentUser.getEmail() == null) {
+                        System.err.println("  - currentUser.getEmail() is null");
+                    } else {
+                        System.err.println("  - currentUser.getEmail() is empty: '" + currentUser.getEmail() + "'");
+                    }
+                }
+                System.out.println("=== VNPay Callback: Email sending process completed ===");
                 
                 // Xóa tất cả thông tin pending khỏi session
                 session.removeAttribute("pendingOrderUserID");

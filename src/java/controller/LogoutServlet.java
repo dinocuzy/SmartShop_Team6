@@ -74,8 +74,8 @@ public class LogoutServlet extends HttpServlet {
         emailCookie.setPath(request.getContextPath() + "/");
         response.addCookie(emailCookie);
         
-        // Redirect về trang chủ với thông báo đăng xuất thành công
-        response.sendRedirect(request.getContextPath() + "/?logout=success");
+        // Redirect về trang chủ với thông báo đăng xuất thành công và flag để xóa lịch sử chat
+        response.sendRedirect(request.getContextPath() + "/?logout=success&clearChat=true");
     }
     
     @Override

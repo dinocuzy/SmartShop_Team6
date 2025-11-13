@@ -668,4 +668,128 @@ public class ProductDAO implements IProductDAO {
         // Kết hợp keyword gốc và normalized để tăng khả năng tìm thấy
         return originalKeyword + " " + result;
     }
+    
+    @Override
+    public List<Product> searchAdvanced(Integer categoryID, Double priceMin, Double priceMax, 
+                                        String brand, List<String> features) {
+        List<Product> products = new ArrayList<>();
+        StringBuilder sql = new StringBuilder(
+            "SELECT p.ProductID, p.CategoryID, p.ProductName, p.Slug, p.Description, p.Price, " +
+            "p.Size, p.Color, p.IsSpecial, p.Stock, p.StockStatus, p.ImageUrl, " +
+            "p.CreatedAt, p.UpdatedAt, c.CategoryName " +
+            "FROM Products p " +
+            "LEFT JOIN Categories c ON p.CategoryID = c.CategoryID " +
+            "WHERE p.StockStatus = 'InStock'"
+        );
+        
+        List<Object> params = new ArrayList<>();
+        
+        if (categoryID != null) {
+            sql.append(" AND p.CategoryID = ?");
+            params.add(categoryID);
+        }
+        
+        if (priceMin != null) {
+            sql.append(" AND p.Price >= ?");
+            params.add(priceMin);
+        }
+        
+        if (priceMax != null) {
+            sql.append(" AND p.Price <= ?");
+            params.add(priceMax);
+        }
+        
+        if (brand != null && !brand.trim().isEmpty()) {
+            sql.append(" AND (LOWER(p.ProductName) LIKE ? OR LOWER(p.Description) LIKE ?)");
+            String brandPattern = "%" + brand.toLowerCase() + "%";
+            params.add(brandPattern);
+            params.add(brandPattern);
+        }
+        
+        // Features: tìm trong Description
+        if (features != null && !features.isEmpty()) {
+            sql.append(" AND (");
+            for (int i = 0; i < features.size(); i++) {
+                if (i > 0) {
+                    sql.append(" OR ");
+                }
+                sql.append("LOWER(p.Description) LIKE ?");
+                params.add("%" + features.get(i).toLowerCase() + "%");
+            }
+            sql.append(")");
+        }
+        
+        sql.append(" ORDER BY p.ProductID DESC");
+        
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            
+            int idx = 1;
+            for (Object param : params) {
+                if (param instanceof Integer) {
+                    ps.setInt(idx++, (Integer) param);
+                } else if (param instanceof Double) {
+                    ps.setDouble(idx++, (Double) param);
+                } else if (param instanceof String) {
+                    ps.setString(idx++, (String) param);
+                }
+            }
+            
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Product product = mapResultSetToProduct(rs);
+                    String categoryName = rs.getString("CategoryName");
+                    if (categoryName != null) {
+                        product.setCategoryName(categoryName);
+                    }
+                    products.add(product);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error in searchAdvanced: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
+        return products;
+    }
+    
+    @Override
+    public List<Product> getTrendingProducts(int limit) {
+        List<Product> products = new ArrayList<>();
+        
+        if (limit <= 0) {
+            limit = 6; // Default
+        }
+        
+        // Lấy sản phẩm mới nhất hoặc sản phẩm đặc biệt (IsSpecial = 1)
+        String sql = "SELECT TOP (?) p.ProductID, p.CategoryID, p.ProductName, p.Slug, p.Description, p.Price, " +
+                     "p.Size, p.Color, p.IsSpecial, p.Stock, p.StockStatus, p.ImageUrl, " +
+                     "p.CreatedAt, p.UpdatedAt, c.CategoryName " +
+                     "FROM Products p " +
+                     "LEFT JOIN Categories c ON p.CategoryID = c.CategoryID " +
+                     "WHERE p.StockStatus = 'InStock' " +
+                     "ORDER BY p.IsSpecial DESC, p.CreatedAt DESC";
+        
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            
+            ps.setInt(1, limit);
+            
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Product product = mapResultSetToProduct(rs);
+                    String categoryName = rs.getString("CategoryName");
+                    if (categoryName != null) {
+                        product.setCategoryName(categoryName);
+                    }
+                    products.add(product);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error getting trending products: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
+        return products;
+    }
 }

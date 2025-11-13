@@ -91,4 +91,23 @@ public interface IProductDAO {
      * @return Danh sách Product khớp
      */
     List<Product> searchForChatbot(String keyword, boolean includeInactive);
+    
+    /**
+     * Tìm kiếm nâng cao với nhiều điều kiện (theo hướng dẫn)
+     * @param categoryID ID category (có thể null)
+     * @param priceMin Giá tối thiểu (có thể null)
+     * @param priceMax Giá tối đa (có thể null)
+     * @param brand Thương hiệu (có thể null)
+     * @param features Danh sách tính năng (có thể null)
+     * @return Danh sách Product khớp
+     */
+    List<Product> searchAdvanced(Integer categoryID, Double priceMin, Double priceMax, 
+                                 String brand, List<String> features);
+    
+    /**
+     * Lấy sản phẩm trending (theo hướng dẫn)
+     * @param limit Số lượng sản phẩm cần lấy
+     * @return Danh sách Product trending
+     */
+    List<Product> getTrendingProducts(int limit);
 }

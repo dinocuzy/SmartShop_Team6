@@ -324,7 +324,7 @@
                                     </li>
                                     <li><hr class="dropdown-divider" style="border-color: #4a4a4a;"></li>
                                     <li>
-                                        <a class="user-dropdown-item" href="${pageContext.request.contextPath}/logout">
+                                        <a class="user-dropdown-item" href="javascript:void(0);" onclick="handleLogout(event);">
                                             <i class="bi bi-box-arrow-right"></i> Đăng xuất
                                         </a>
                                     </li>
@@ -385,6 +385,12 @@
 </nav>
 
 <script>
+    // Hàm xử lý logout
+    function handleLogout(event) {
+        event.preventDefault();
+        window.location.href = '${pageContext.request.contextPath}/logout';
+    }
+    
     // Hàm toggle dropdown - được gọi trực tiếp từ onclick
     window.toggleLoginDropdown = function(event) {
         console.log('=== toggleLoginDropdown called ===', event);

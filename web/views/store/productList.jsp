@@ -15,71 +15,6 @@
         // Set context path
         window.contextPath = '${pageContext.request.contextPath}';
         
-        // Define addToCompare function immediately (before compare.js loads)
-        window.addToCompare = function(productID) {
-            if (!productID) {
-                alert('Lỗi: Không có ID sản phẩm');
-                return Promise.reject('ProductID is required');
-            }
-            
-            productID = parseInt(productID);
-            const STORAGE_KEY = 'compare_products';
-            const MAX_ITEMS = 2; // Chỉ so sánh 2 sản phẩm
-            
-            try {
-                // Get current list from localStorage
-                const stored = localStorage.getItem(STORAGE_KEY);
-                let productIDs = stored ? JSON.parse(stored) : [];
-                
-                // Check max items
-                if (productIDs.length >= MAX_ITEMS) {
-                    alert('Bạn chỉ có thể so sánh tối đa ' + MAX_ITEMS + ' sản phẩm. Vui lòng xóa một sản phẩm trước khi thêm mới.');
-                    return Promise.reject('Maximum compare items reached');
-                }
-                
-                // Check if already in list
-                if (productIDs.includes(productID)) {
-                    alert('Sản phẩm này đã có trong danh sách so sánh');
-                    return Promise.reject('Product already in compare list');
-                }
-                
-                // Add to localStorage immediately
-                productIDs.push(productID);
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(productIDs));
-                
-                // Update UI if possible
-                const buttons = document.querySelectorAll('[data-compare-product-id="' + productID + '"]');
-                buttons.forEach(function(btn) {
-                    btn.classList.add('active');
-                    if (btn.classList.contains('action-icon')) {
-                        btn.style.color = '#28a745';
-                        btn.style.borderColor = '#28a745';
-                        btn.title = 'Đã thêm vào so sánh';
-                    }
-                });
-                
-                // Show alert
-                alert('Đã thêm sản phẩm vào danh sách so sánh');
-                
-                // Nếu đã có đủ 2 sản phẩm, tự động mở modal so sánh
-                if (productIDs.length === MAX_ITEMS) {
-                    // Đợi một chút để đảm bảo UI đã cập nhật
-                    setTimeout(function() {
-                        if (typeof window.showCompareModal === 'function') {
-                            window.showCompareModal();
-                        }
-                    }, 300);
-                }
-                
-                // Return success immediately
-                return Promise.resolve({ success: true, useLocalStorage: true });
-            } catch (e) {
-                console.error('Error in addToCompare:', e);
-                alert('Có lỗi xảy ra khi thêm sản phẩm vào danh sách so sánh');
-                return Promise.reject(e);
-            }
-        };
-        
         // Define openProductModal function early as placeholder
         // Will be fully implemented when productModal.jsp is loaded at end of body
         window.openProductModal = function(productID) {
@@ -806,13 +741,6 @@
                                                  onclick="openProductModal(${product.productID})"
                                                  title="Xem chi tiết">
                                                 <i class="bi bi-eye"></i>
-                                            </div>
-                                            <div class="action-icon compare-btn" 
-                                                 data-compare-product-id="${product.productID}"
-                                                 onclick="if(typeof window.addToCompare === 'function'){window.addToCompare(${product.productID});}else{alert('Chức năng so sánh đang tải, vui lòng thử lại sau vài giây.');}"
-                                                 title="So sánh sản phẩm"
-                                                 style="position: relative; z-index: 2; pointer-events: auto; cursor: pointer;">
-                                                <i class="bi bi-arrow-left-right"></i>
                                             </div>
                                             <div class="action-icon" 
                                                  onclick="toggleWishlist(${product.productID}, '${pageContext.request.contextPath}/shop')"
